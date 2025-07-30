@@ -1,0 +1,63 @@
+# c:\projects\DNA-utils-universal\ystr_predictor\k8s\canary.yml
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: ystr-predictor-vsvc
+spec:
+  hosts:
+  - predictor.example.com
+  gateways:
+  - ystr-predictor-gateway
+  http:
+  - match:
+    - headers:
+        x-canary:
+          exact: "true"
+    route:
+    - destination:
+        host: ystr-predictor-canary
+        subset: canary
+      weight: 20
+    - destination:
+        host: ystr-predictor-stable
+        subset: stable
+      weight: 80
+  - route:
+    - destination:
+        host: ystr-predictor-stable
+        subset: stable
+
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: ystr-predictor-dstrule
+spec:
+  host: ystr-predictor-service
+  subsets:
+  - name: stable
+    labels:
+      version: stable
+  - name: canary
+    labels:
+      version: canary
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ystr-predictor-canary-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ystr-predictor-canary
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70

@@ -1,0 +1,50 @@
+# c:\projects\DNA-utils-universal\ystr_predictor\static\test.html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>STR Predictor Test</title>
+</head>
+<body>
+    <form id="predictionForm">
+        DYS393: <input type="number" id="DYS393" value="12"><br>
+        DYS390: <input type="number" id="DYS390" value="22"><br>
+        DYS19: <input type="number" id="DYS19" value="15"><br>
+        DYS391: <input type="number" id="DYS391" value="10"><br>
+        DYS385_1: <input type="number" id="DYS385_1" value="13"><br>
+        DYS385_2: <input type="number" id="DYS385_2" value="16"><br>
+        DYS426: <input type="number" id="DYS426" value="11"><br>
+        DYS388: <input type="number" id="DYS388" value="15"><br>
+        DYS439: <input type="number" id="DYS439" value="12"><br>
+        DYS389i: <input type="number" id="DYS389i" value="14"><br>
+        DYS392: <input type="number" id="DYS392" value="11"><br>
+        DYS389ii: <input type="number" id="DYS389ii" value="30"><br>
+        <button type="button" onclick="predict()">Predict</button>
+    </form>
+    <div id="result"></div>
+
+    <script>
+        function predict() {
+            const markers = {};
+            ['DYS393', 'DYS390', 'DYS19', 'DYS391', 'DYS385_1', 'DYS385_2', 
+             'DYS426', 'DYS388', 'DYS439', 'DYS389i', 'DYS392', 'DYS389ii'].forEach(marker => {
+                markers[marker] = parseInt(document.getElementById(marker).value);
+            });
+
+            fetch('http://localhost:9004/api/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({markers})
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('result').innerText = JSON.stringify(data, null, 2);
+            })
+            .catch(error => {
+                document.getElementById('result').innerText = 'Error: ' + error;
+            });
+        }
+    </script>
+</body>
+</html>

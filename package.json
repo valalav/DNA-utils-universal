@@ -1,0 +1,17 @@
+{
+  "name": "dna-utils-universal",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "cross-env NODE_ENV=development pm2 start ecosystem.config.js",
+    "build": "npm run build:str-matcher && npm run build:haplo-client",
+    "build:str-matcher": "cd str-matcher && npm run build",
+    "build:haplo-client": "cd ftdna_haplo/client && npm run build",
+    "start": "cross-env NODE_ENV=production pm2 start ecosystem.config.js",
+    "stop": "pm2 delete all"
+  },
+  "dependencies": {
+    "cross-env": "^7.0.3",
+    "dotenv": "^16.0.3",
+    "pm2": "^5.3.0"
+  }
+}
