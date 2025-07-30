@@ -1,6 +1,7 @@
 "use client";
 
 import '../../syles/DataRepositories.css';
+import { tableColors } from '../../config/tableColors.config';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { STRMatch, STRProfile, MarkerCount } from '@/utils/constants';
@@ -399,11 +400,11 @@ const MatchesTable: React.FC<MatchesTableProps> = ({
         </button>
       </div>
 
-      <table className="table-primary border-collapse shadow-xl rounded-2xl overflow-hidden border border-gray-200/60">
+      <table className="matches-table table-primary border-collapse shadow-xl rounded-2xl overflow-hidden border border-gray-200/60">
         <thead>
           <tr className="h-10">
-            <th className="border border-border-medium p-1"></th>
-            <th className="border border-border-medium p-1">
+            <th className="border border-black p-1"></th>
+            <th className="border border-black p-1">
               <input
                 type="text"
                 className="input-primary text-xs w-full"
@@ -415,7 +416,7 @@ const MatchesTable: React.FC<MatchesTableProps> = ({
                 }))}
               />
             </th>
-            <th className="border border-border-medium p-1">
+            <th className="border border-black p-1">
               <input
                 type="text"
                 className="input-primary text-xs w-full"
@@ -427,7 +428,7 @@ const MatchesTable: React.FC<MatchesTableProps> = ({
                 }))}
               />
             </th>
-            <th className="border border-border-medium p-1">
+            <th className="border border-black p-1">
               <input
                 type="text"
                 className="input-primary text-xs w-full"
@@ -439,9 +440,9 @@ const MatchesTable: React.FC<MatchesTableProps> = ({
                 }))}
               />
             </th>
-            <th className="border border-border-medium p-1" colSpan={4}></th>
+            <th className="border border-black p-1" colSpan={4}></th>
             {visibleMarkers.map(marker => (
-              <th key={marker} className="border border-border-medium p-1 w-6">
+              <th key={marker} className="border border-black p-1 w-8">
                 <input
                   type="checkbox"
                   className="w-3 h-3 accent-primary"
@@ -457,16 +458,16 @@ const MatchesTable: React.FC<MatchesTableProps> = ({
             ))}
           </tr>
           <tr className="bg-background-secondary h-24">
-            <th className="border border-border-medium p-2 w-8 min-w-[2rem] max-w-[2rem]">-</th>
-            <th className="border border-border-medium p-2 w-24 min-w-[6rem] max-w-[6rem]">{t('table.kit')}</th>
-            <th className="border border-border-medium p-2 w-40 min-w-[10rem] max-w-[10rem] bg-background-tertiary/50">{t('table.name')}</th>
-            <th className="border border-border-medium p-2 w-32 min-w-[8rem] max-w-[8rem] bg-background-tertiary/50">{t('table.country')}</th>
-            <th className="border border-border-medium p-2 w-32 min-w-[8rem] max-w-[8rem] bg-background-tertiary/50">{t('table.haplo')}</th>
-            <th className="border border-border-medium p-2 w-16 min-w-[4rem] max-w-[4rem] bg-background-tertiary/50">{t('table.gd')}</th>
-            <th className="border border-border-medium p-2 w-16 min-w-[4rem] max-w-[4rem] bg-background-tertiary/50">{t('table.str')}</th>
-            <th className="border border-border-medium p-2 w-16 min-w-[4rem] max-w-[4rem] bg-background-tertiary/50">{t('table.percent')}</th>
+            <th className="border border-black p-2 w-8 min-w-[2rem] max-w-[2rem]">-</th>
+            <th className="border border-black p-2 w-24 min-w-[6rem] max-w-[6rem]">{t('table.kit')}</th>
+            <th className="border border-black p-2 w-40 min-w-[10rem] max-w-[10rem] bg-background-tertiary/50">{t('table.name')}</th>
+            <th className="border border-black p-2 w-32 min-w-[8rem] max-w-[8rem] bg-background-tertiary/50">{t('table.country')}</th>
+            <th className="border border-black p-2 w-32 min-w-[8rem] max-w-[8rem] bg-background-tertiary/50">{t('table.haplo')}</th>
+            <th className="border border-black p-2 w-16 min-w-[4rem] max-w-[4rem] bg-background-tertiary/50">{t('table.gd')}</th>
+            <th className="border border-black p-2 w-16 min-w-[4rem] max-w-[4rem] bg-background-tertiary/50">{t('table.str')}</th>
+            <th className="border border-black p-2 w-16 min-w-[4rem] max-w-[4rem] bg-background-tertiary/50">{t('table.percent')}</th>
             {visibleMarkers.map(marker => (
-              <th key={marker} className="p-0 border border-border-medium w-6 relative">
+              <th key={marker} className="p-0 border border-black w-8 relative">
                 <div className="h-24">
                   <button 
                     onClick={() => onRemoveMarker(marker)} 
@@ -484,12 +485,12 @@ const MatchesTable: React.FC<MatchesTableProps> = ({
           </tr>
         </thead>
         <tbody>
-          <tr className="bg-background-tertiary h-8 leading-none">
-            <td className="border border-border-light p-2 leading-none w-8 min-w-[2rem] max-w-[2rem]"></td>
-            <td className="border border-border-light p-2 font-bold text-text-primary leading-none w-24 min-w-[6rem] max-w-[6rem] truncate" title={query.kitNumber}>{query.kitNumber}</td>
-            <td className="border border-border-light p-2 font-semibold text-text-primary leading-none w-40 min-w-[10rem] max-w-[10rem] truncate" title={query.name || "-"}>{query.name || "-"}</td>
-            <td className="border border-border-light p-2 font-semibold text-text-primary leading-none w-32 min-w-[8rem] max-w-[8rem] truncate" title={query.country || "-"}>{query.country || "-"}</td>
-            <td className="border border-border-light p-2 font-semibold text-text-primary leading-none w-32 min-w-[8rem] max-w-[8rem] truncate" title={query.haplogroup || "-"}>
+          <tr className="bg-background-tertiary h-10 leading-none">
+            <td className="border border-black p-2 leading-none w-8 min-w-[2rem] max-w-[2rem]"></td>
+            <td className="border border-black p-2 font-bold text-text-primary leading-none w-24 min-w-[6rem] max-w-[6rem] truncate" title={query.kitNumber}>{query.kitNumber}</td>
+            <td className="border border-black p-2 font-semibold text-text-primary leading-none w-40 min-w-[10rem] max-w-[10rem] truncate" title={query.name || "-"}>{query.name || "-"}</td>
+            <td className="border border-black p-2 font-semibold text-text-primary leading-none w-32 min-w-[8rem] max-w-[8rem] truncate" title={query.country || "-"}>{query.country || "-"}</td>
+            <td className="border border-black p-2 font-semibold text-text-primary leading-none w-32 min-w-[8rem] max-w-[8rem] truncate" title={query.haplogroup || "-"}>
               {query.haplogroup ? (
                 <button
                   onClick={() => setSelectedHaplogroup(query.haplogroup || null)}
@@ -499,45 +500,55 @@ const MatchesTable: React.FC<MatchesTableProps> = ({
                 </button>
               ) : "-"}
             </td>
-            <td className="border border-border-light p-2 text-center font-semibold text-text-primary leading-none">-</td>
-            <td className="border border-border-light p-2 text-center font-semibold text-text-primary leading-none">-</td>
-            <td className="border border-border-light p-2 text-center font-semibold text-text-primary leading-none">-</td>
-            {visibleMarkers.map(marker => (
-              <td key={marker} className="border border-border-light p-0 w-6 h-8 leading-none">
-                <div 
-                  className="flex items-center justify-center h-full w-6 overflow-hidden text-ellipsis"
-                  title={query.markers[marker] || ''}
-                >
-                  <span className="truncate max-w-[1.5rem]">{query.markers[marker] || ''}</span>
-                </div>
-              </td>
-            ))}
+            <td className="border border-black p-2 text-center font-semibold text-text-primary leading-none">-</td>
+            <td className="border border-black p-2 text-center font-semibold text-text-primary leading-none">-</td>
+            <td className="border border-black p-2 text-center font-semibold text-text-primary leading-none">-</td>
+            {visibleMarkers.map(marker => {
+              const queryValue = query.markers[marker];
+              if (!queryValue) {
+                return <td key={marker} className="border border-black p-0 w-8 h-10 leading-none"></td>;
+              }
+              
+              return (
+                <td key={marker} className="border border-black p-0 w-8 h-10 leading-none">
+                  <div className="marker-cell">
+                    <div 
+                      className="marker-color-block"
+                      style={{ backgroundColor: '#f0f0f0' }}
+                      title={queryValue}
+                    >
+                      <span className="text-xs font-semibold">{queryValue}</span>
+                    </div>
+                  </div>
+                </td>
+              );
+            })}
           </tr>
           {filteredMatches.map((matchItem, index) => (
             <tr 
               key={`${matchItem.profile.kitNumber}-${index}`}
-              className="hover:bg-background-tertiary transition-colors h-8"
+              className="hover:bg-background-tertiary transition-colors h-10"
             >
-              <td className="border border-border-light p-2 w-8 min-w-[2rem] max-w-[2rem]">
+              <td className="border border-black p-2 w-8 min-w-[2rem] max-w-[2rem]">
                 <button
                   onClick={() => onRemoveMatch(matchItem.profile.kitNumber)}
                   className="text-error hover:text-error/80 transition-colors"
                   title={t('common.remove')}
                 >×</button>
               </td>
-              <td className="border border-border-light p-2 w-24 min-w-[6rem] max-w-[6rem] truncate" title={matchItem.profile.kitNumber}>
+              <td className="border border-black p-2 w-24 min-w-[6rem] max-w-[6rem] truncate" title={matchItem.profile.kitNumber}>
                 <button
                   onClick={() => onKitNumberClick(matchItem.profile.kitNumber)}
                   className="text-accent hover:text-accent/80 transition-colors font-bold truncate"
                 >{matchItem.profile.kitNumber}</button>
               </td>
-              <td className="border border-border-light p-2 font-semibold text-text-primary w-40 min-w-[10rem] max-w-[10rem] truncate" title={matchItem.profile.name || "-"}>
+              <td className="border border-black p-2 font-semibold text-text-primary w-40 min-w-[10rem] max-w-[10rem] truncate" title={matchItem.profile.name || "-"}>
                 {matchItem.profile.name || "-"}
               </td>
-              <td className="border border-border-light p-2 font-semibold text-text-primary w-32 min-w-[8rem] max-w-[8rem] truncate" title={matchItem.profile.country || "-"}>
+              <td className="border border-black p-2 font-semibold text-text-primary w-32 min-w-[8rem] max-w-[8rem] truncate" title={matchItem.profile.country || "-"}>
                 {matchItem.profile.country || "-"}
               </td>
-              <td className="border border-border-light p-2 font-semibold text-text-primary w-32 min-w-[8rem] max-w-[8rem] truncate" title={matchItem.profile.haplogroup || "-"}>
+              <td className="border border-black p-2 font-semibold text-text-primary w-32 min-w-[8rem] max-w-[8rem] truncate" title={matchItem.profile.haplogroup || "-"}>
                 {matchItem.profile.haplogroup ? (
                   <button
                     onClick={() => setSelectedHaplogroup(matchItem.profile.haplogroup || null)}
@@ -547,13 +558,13 @@ const MatchesTable: React.FC<MatchesTableProps> = ({
                   </button>
                 ) : "-"}
               </td>
-              <td className="border border-border-light p-2 text-center font-semibold text-text-primary">
+              <td className="border border-black p-2 text-center font-semibold text-text-primary">
                 {Math.round(matchItem.distance)}
               </td>
-              <td className="border border-border-light p-2 text-center font-semibold text-text-primary">
+              <td className="border border-black p-2 text-center font-semibold text-text-primary">
                 {matchItem.comparedMarkers}
               </td>
-              <td className="border border-border-light p-2 text-center font-semibold text-text-primary">
+              <td className="border border-black p-2 text-center font-semibold text-text-primary">
                 {matchItem.percentIdentical.toFixed(1)}
               </td>
               {visibleMarkers.map(marker => {
@@ -561,32 +572,34 @@ const MatchesTable: React.FC<MatchesTableProps> = ({
                 const matchValue = matchItem.profile.markers[marker];
 
                 if (!queryValue || !matchValue) {
-                  return <td key={marker} className="border border-border-light p-0 w-6 h-8"></td>;
+                  return <td key={marker} className="border border-black p-0 w-8 h-10"></td>;
                 }
 
                 const diff = calculateMarkerDifference(queryValue, matchValue, marker, marker in palindromes, calculationMode);
                 const rarityClass = getRarityClass(marker, matchValue);
 
                 return (
-                  <td key={marker} className={`border border-border-light p-0 w-6 h-8 ${rarityClass}`}>
-                    <div
-                      className="flex items-center justify-center h-full w-full overflow-hidden"
-                      title={matchValue}
-                      aria-label={`${marker} value ${matchValue}`}
-                    >
-                      {!isNaN(diff) && diff > 0 && (
-                        <span className={
-                          diff === 1 ? 'text-diff-1' :
-                          diff === 2 ? 'text-diff-2' :
-                          'text-diff-3'
-                        }>
-                          {
-                            Number(matchValue) > Number(queryValue)
-                              ? `+${diff}`
-                              : `-${diff}`
-                          }
-                        </span>
-                      )}
+                  <td key={marker} className="border border-black p-0 w-8 h-10">
+                    <div className={`marker-cell ${rarityClass}`}>
+                      <div
+                        className="marker-color-block"
+                        title={matchValue}
+                        aria-label={`${marker} value ${matchValue}`}
+                      >
+                        {!isNaN(diff) && diff > 0 && (
+                          <span className={
+                            diff === 1 ? 'text-diff-1' :
+                            diff === 2 ? 'text-diff-2' :
+                            'text-diff-3'
+                          }>
+                            {
+                              Number(matchValue) > Number(queryValue)
+                                ? `+${diff}`
+                                : `-${diff}`
+                            }
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </td>
                 );

@@ -1,40 +1,101 @@
-/* Existing styles... */
-
-/* Marker rarity classes - градация от светлого (частые) к темному (редкие) */
-.marker-rarity-common {
-  background-color: #fef3f2; /* Очень светлый для частых (20-33%) */
+/* Table Color Configuration CSS Variables */
+:root {
+  /* Цвета редкости маркеров */
+  --marker-rarity-common: #fef3f2;
+  --marker-rarity-uncommon: #fed7cc;
+  --marker-rarity-rare: #fb9b7a;
+  --marker-rarity-veryrare: #f97316;
+  --marker-rarity-extremelyrare: #dc2626;
+  
+  /* Цвета различий текста */
+  --text-diff1: #3b82f6;
+  --text-diff2: #2563eb;
+  --text-diff3: #1d4ed8;
+  
+  /* Цвета границ */
+  --border-black: #000000;
+  --border-light: #e5e7eb;
+  
+  /* Отступы для цветных блоков */
+  --cell-padding-vertical: 3px;
+  --cell-padding-horizontal: 1px;
 }
 
-.marker-rarity-uncommon {
-  background-color: #fed7cc; /* Светлый для необычных (12-20%) */
+/* Стили для внутренних цветных блоков с отступами */
+.marker-cell {
+  padding: var(--cell-padding-vertical) var(--cell-padding-horizontal);
+  height: 100%;
+  box-sizing: border-box;
+  background-color: white; /* Белый фон ячейки */
 }
 
-.marker-rarity-rare {
-  background-color: #fb9b7a; /* Средний для редких (8-12%) */
+.marker-color-block {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-height: 20px; /* Минимальная высота для видимости */
+  border-radius: 1px; /* Легкое скругление */
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); /* Тонкая внутренняя граница */
 }
 
-.marker-rarity-very-rare {
-  background-color: #f97316; /* Темный для очень редких (4-8%) */
+/* Классы редкости маркеров - применяются к marker-color-block напрямую */
+.marker-rarity-common .marker-color-block {
+  background-color: var(--marker-rarity-common, #fef3f2);
 }
 
-.marker-rarity-extremely-rare {
-  background-color: #dc2626; /* Очень темный для экстремально редких (<4%) */
+.marker-rarity-uncommon .marker-color-block {
+  background-color: var(--marker-rarity-uncommon, #fed7cc);
 }
 
-/* Text colors for differences */
+.marker-rarity-rare .marker-color-block {
+  background-color: var(--marker-rarity-rare, #fb9b7a);
+}
+
+.marker-rarity-very-rare .marker-color-block {
+  background-color: var(--marker-rarity-veryrare, #f97316);
+}
+
+.marker-rarity-extremely-rare .marker-color-block {
+  background-color: var(--marker-rarity-extremelyrare, #dc2626);
+}
+
+/* Цвета текста для различий */
 .text-diff-1 {
-  color: #3b82f6;
+  color: var(--text-diff1, #3b82f6);
+  font-weight: bold;
+  font-size: 0.7rem;
+  line-height: 1;
+  text-shadow: 0 0 1px rgba(255,255,255,0.5);
 }
 
 .text-diff-2 {
-  color: #2563eb;
+  color: var(--text-diff2, #2563eb);
+  font-weight: bold;
+  font-size: 0.7rem;
+  line-height: 1;
+  text-shadow: 0 0 1px rgba(255,255,255,0.5);
 }
 
 .text-diff-3 {
-  color: #1d4ed8;
+  color: var(--text-diff3, #1d4ed8);
+  font-weight: bold;
+  font-size: 0.7rem;
+  line-height: 1;
+  text-shadow: 0 0 1px rgba(255,255,255,0.5);
 }
 
-/* Table cell styles */
+/* Стили таблицы с черными границами */
+.matches-table td,
+.matches-table th {
+  border: 1px solid var(--border-black) !important;
+  padding: 0;
+  position: relative;
+}
+
+/* Стиль для ячеек таблицы */
 .table-cell-center {
   display: flex;
   align-items: center;
