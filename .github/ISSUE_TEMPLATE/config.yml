@@ -1,10 +1,10 @@
 blank_issues_enabled: false
 contact_links:
   - name: 💬 GitHub Discussions
-    url: https://github.com/yourusername/DNA-utils-universal/discussions
+    url: https://github.com/valalav/DNA-utils-universal/discussions
     about: Задать вопрос сообществу или обсудить идеи
   - name: 📚 Документация
-    url: https://github.com/yourusername/DNA-utils-universal/tree/main/docs
+    url: https://github.com/valalav/DNA-utils-universal/tree/main/docs
     about: Изучить документацию проекта
   - name: 🔬 Y-STR Research Community
     url: https://www.familytreedna.com/groups/y-dna-haplogroup-projects

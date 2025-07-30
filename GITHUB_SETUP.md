@@ -62,8 +62,8 @@ git commit -m "Initial commit: DNA Utils Universal project setup
 # Переименование главной ветки в main (современная практика)
 git branch -M main
 
-# Добавление remote origin (замените yourusername на ваш GitHub username)
-git remote add origin https://github.com/yourusername/DNA-utils-universal.git
+# Добавление remote origin (замените valalav на ваш GitHub username, если отличается)
+git remote add origin https://github.com/valalav/DNA-utils-universal.git
 
 # Загрузка на GitHub
 git push -u origin main
@@ -144,7 +144,7 @@ jobs:
 
 ### Обновление README.md
 Замените placeholder-ы в README.md:
-- `yourusername` → ваш GitHub username
+- `valalav` → ваш GitHub username (если отличается)
 - `your.email@example.com` → ваш email
 - `Ваше имя` → ваше имя
 

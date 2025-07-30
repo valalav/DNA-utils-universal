@@ -93,5 +93,5 @@ DNA-utils-universal/
 
 ## Ссылки
 
-- [1.0.0]: https://github.com/yourusername/DNA-utils-universal/releases/tag/v1.0.0
-- [Unreleased]: https://github.com/yourusername/DNA-utils-universal/compare/v1.0.0...HEAD
+- [1.0.0]: https://github.com/valalav/DNA-utils-universal/releases/tag/v1.0.0
+- [Unreleased]: https://github.com/valalav/DNA-utils-universal/compare/v1.0.0...HEAD

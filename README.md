@@ -41,7 +41,7 @@ DNA-utils-universal/
 
 1. **Клонируйте репозиторий:**
 ```bash
-git clone https://github.com/yourusername/DNA-utils-universal.git
+git clone https://github.com/valalav/DNA-utils-universal.git
 cd DNA-utils-universal
 ```
 
@@ -201,7 +201,7 @@ GET /api/autocomplete?term=R-M
 
 - **Автор**: Ваше имя
 - **Email**: your.email@example.com
-- **GitHub**: [@yourusername](https://github.com/yourusername)
+- **GitHub**: [@valalav](https://github.com/valalav)
 
 ## 🙏 Благодарности
 
