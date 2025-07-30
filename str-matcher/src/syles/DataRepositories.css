@@ -1,20 +1,24 @@
 /* Existing styles... */
 
-/* Marker rarity classes */
+/* Marker rarity classes - градация от светлого (частые) к темному (редкие) */
 .marker-rarity-common {
-  background-color: #f0fdf4;
+  background-color: #fef3f2; /* Очень светлый для частых (20-33%) */
 }
 
 .marker-rarity-uncommon {
-  background-color: #ecfdf5;
+  background-color: #fed7cc; /* Светлый для необычных (12-20%) */
 }
 
 .marker-rarity-rare {
-  background-color: #f0f9ff;
+  background-color: #fb9b7a; /* Средний для редких (8-12%) */
 }
 
 .marker-rarity-very-rare {
-  background-color: #eff6ff;
+  background-color: #f97316; /* Темный для очень редких (4-8%) */
+}
+
+.marker-rarity-extremely-rare {
+  background-color: #dc2626; /* Очень темный для экстремально редких (<4%) */
 }
 
 /* Text colors for differences */

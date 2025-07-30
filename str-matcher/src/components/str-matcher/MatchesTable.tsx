@@ -1,5 +1,7 @@
 "use client";
 
+import '../../syles/DataRepositories.css';
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { STRMatch, STRProfile, MarkerCount } from '@/utils/constants';
 import { calculateMarkerDifference, calculateMarkerRarity } from '@/utils/calculations';
@@ -329,10 +331,11 @@ const MatchesTable: React.FC<MatchesTableProps> = ({
         const { rarity, rarityStyle } = calculateMarkerRarity(matches, marker, matchValue, queryValue);
         let rarityClass = '';
         if (rarityStyle?.backgroundColor) {
-          if (rarityStyle.backgroundColor.includes('f0fdf4')) rarityClass = 'marker-rarity-common';
-          else if (rarityStyle.backgroundColor.includes('ecfdf5')) rarityClass = 'marker-rarity-uncommon';
-          else if (rarityStyle.backgroundColor.includes('f0f9ff')) rarityClass = 'marker-rarity-rare';
-          else if (rarityStyle.backgroundColor.includes('eff6ff')) rarityClass = 'marker-rarity-very-rare';
+          if (rarityStyle.backgroundColor.includes('--rarity-1')) rarityClass = 'marker-rarity-extremely-rare';
+          else if (rarityStyle.backgroundColor.includes('--rarity-2')) rarityClass = 'marker-rarity-very-rare';
+          else if (rarityStyle.backgroundColor.includes('--rarity-3')) rarityClass = 'marker-rarity-rare';
+          else if (rarityStyle.backgroundColor.includes('--rarity-4')) rarityClass = 'marker-rarity-uncommon';
+          else if (rarityStyle.backgroundColor.includes('--rarity-5')) rarityClass = 'marker-rarity-common';
         }
         cache[marker][matchValue] = { rarity, rarityClass };
       });
@@ -344,40 +347,6 @@ const MatchesTable: React.FC<MatchesTableProps> = ({
   const getRarityClass = useCallback((marker: string, value: string) => {
     return markerRarityCache[marker]?.[value]?.rarityClass || '';
   }, [markerRarityCache]);
-
-  const renderMarkerCell = (
-    marker: string,
-    queryValue: string | undefined,
-    matchValue: string | undefined
-  ) => {
-    if (!queryValue || !matchValue) {
-      return <td key={marker} className="border border-border-light p-0 w-8 h-8"></td>;
-    }
-
-    const diff = calculateMarkerDifference(queryValue, matchValue, marker, marker in palindromes, calculationMode);
-    const { rarity } = calculateMarkerRarity(matches, marker, matchValue, queryValue);
-    const rarityClass = getRarityClass(marker, matchValue);
-
-    return (
-      <td key={marker} className="border border-border-light p-0 w-8 h-8">
-        <div
-          className={`table-cell-center ${getRarityClass(marker, matchValue)}`}
-          title={`${marker}: ${matchValue}`}
-          aria-label={`Marker ${marker} value ${matchValue}`}
-        >
-          {diff !== 0 && !isNaN(diff) && (
-            <span className={
-              diff === 1 ? 'text-diff-1' : 
-              diff === 2 ? 'text-diff-2' : 
-                         'text-diff-3'
-            }>
-              {diff > 0 ? `+${diff}` : diff}
-            </span>
-          )}
-        </div>
-      </td>
-    );
-  };
 
   if (!matches.length || !query) return null;
 
@@ -599,21 +568,21 @@ const MatchesTable: React.FC<MatchesTableProps> = ({
                 const rarityClass = getRarityClass(marker, matchValue);
 
                 return (
-                  <td key={marker} className="border border-border-light p-0 w-6 h-8">
-                    <div 
-                      className={`flex items-center justify-center h-full w-6 overflow-hidden ${rarityClass}`}
+                  <td key={marker} className={`border border-border-light p-0 w-6 h-8 ${rarityClass}`}>
+                    <div
+                      className="flex items-center justify-center h-full w-full overflow-hidden"
                       title={matchValue}
                       aria-label={`${marker} value ${matchValue}`}
                     >
                       {!isNaN(diff) && diff > 0 && (
                         <span className={
-                          diff === 1 ? 'text-diff-1' : 
-                          diff === 2 ? 'text-diff-2' : 
+                          diff === 1 ? 'text-diff-1' :
+                          diff === 2 ? 'text-diff-2' :
                           'text-diff-3'
                         }>
                           {
-                            Number(matchValue) > Number(queryValue) 
-                              ? `+${diff}` 
+                            Number(matchValue) > Number(queryValue)
+                              ? `+${diff}`
                               : `-${diff}`
                           }
                         </span>
