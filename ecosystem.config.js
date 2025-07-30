@@ -2,6 +2,23 @@ require('dotenv').config();
 
 const isProduction = process.env.NODE_ENV === 'production';
 const path = require('path');
+const os = require('os');
+
+// Автоматическое определение внешнего IP адреса
+function getExternalIP() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const interface of interfaces[name]) {
+      // Пропускаем loopback и non-IPv4 адреса
+      if (interface.family === 'IPv4' && !interface.internal) {
+        return interface.address;
+      }
+    }
+  }
+  return 'localhost'; // fallback
+}
+
+const HOST_IP = process.env.HOST_IP || getExternalIP();
 
 module.exports = {
   apps: [
@@ -12,7 +29,7 @@ module.exports = {
       args: 'dev -H 0.0.0.0',
       env: {
         NODE_ENV: process.env.NODE_ENV || 'development',
-        NEXT_PUBLIC_API_URL: process.env.DEV_API_URL || 'http://localhost:9003/api',
+        NEXT_PUBLIC_API_URL: process.env.DEV_API_URL || `http://${HOST_IP}:9003/api`,
         PORT: 9002
       }
     },
@@ -27,7 +44,7 @@ module.exports = {
         API_PATH: '/api',
         ALLOWED_ORIGINS: isProduction ? 
           process.env.PROD_ALLOWED_ORIGINS : 
-          process.env.DEV_ALLOWED_ORIGINS || 'http://localhost:9002,http://localhost:5173'
+          process.env.DEV_ALLOWED_ORIGINS || `http://${HOST_IP}:9002,http://${HOST_IP}:5173,http://localhost:9002,http://localhost:5173`
       }
     },
     {
@@ -38,7 +55,7 @@ module.exports = {
       env: {
         NODE_ENV: process.env.NODE_ENV || 'development',
         PORT: 5173,
-        VITE_API_URL: isProduction ? '/api' : process.env.DEV_API_URL || 'http://localhost:9003/api'
+        VITE_API_URL: isProduction ? '/api' : process.env.DEV_API_URL || `http://${HOST_IP}:9003/api`
       }
     }
   ]
