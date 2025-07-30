@@ -40,10 +40,8 @@ export function useWorker() {
         setLoading(true);
         setError(null);
 
-        // Создаем нового воркера для каждого запуска
-        workerRef.current = new Worker(
-          new URL('../workers/comparison.worker.ts', import.meta.url)
-        );
+        // Create new worker using Next.js worker syntax
+        workerRef.current = new Worker(new URL('../workers/comparison.worker.ts', import.meta.url), { type: 'module' });
 
         workerRef.current.onmessage = (e: MessageEvent) => {
           const response = e.data;

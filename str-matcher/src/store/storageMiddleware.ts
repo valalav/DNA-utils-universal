@@ -1,10 +1,10 @@
-import { Middleware } from '@reduxjs/toolkit';
+import { Middleware, AnyAction } from '@reduxjs/toolkit';
 import type { UserProfile } from './userProfile';
 
 const STORAGE_KEY = 'str_matcher_user_profile';
 
-export const storageMiddleware: Middleware = 
-  store => next => (action: unknown) => {
+export const storageMiddleware: Middleware =
+  store => next => (action: AnyAction) => {
     const result = next(action);
 
     if (

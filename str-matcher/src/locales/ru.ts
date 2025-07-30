@@ -38,6 +38,34 @@ export const ru = {
     showEmpty: 'Показывать записи без гаплогруппы',
     showNonNegative: 'Показывать неотрицательные',
     applyFilter: 'Применить фильтр',
-    placeholder: 'Введите гаплогруппу'
+    placeholder: 'Введите гаплогруппу',
+    enterHaplogroup: 'Введите гаплогруппу',
+    keepFilteredOnly: 'Оставить только отфильтрованные',
+    removeFiltered: 'Удалить отфильтрованные',
+    yDna: 'Y-ДНК',
+    mtdna: 'мтДНК',
+    other: 'Другое'
+  },
+  errors: {
+    loadProfiles: 'Ошибка загрузки профилей',
+    exportDatabase: 'Ошибка экспорта базы данных',
+    removeProfiles: 'Ошибка удаления профилей'
+  },
+  console: {
+    loadingProfiles: 'Загрузка профилей...',
+    processingFile: 'Обработка файла...'
+  },
+  haplogroupInfo: {
+    title: 'Гаплогруппа: {haplogroup}',
+    loading: 'Загрузка...',
+    ftdnaPath: 'FTDNA Путь',
+    yfullPath: 'YFull Путь',
+    viewFtdna: 'Открыть в FTDNA',
+    viewYfull: 'Открыть в YFull',
+    errors: {
+      default: 'Ошибка загрузки данных гаплогруппы',
+      timeout: 'Таймаут запроса. Сервер слишком долго отвечает.',
+      network: 'Ошибка сети. Не удалось подключиться к серверу.'
+    }
   }
-}; 
+};

@@ -2,7 +2,7 @@ import { logger } from './logger';
 import { notifications } from './notifications';
 import { i18n } from './i18n';
 import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
+import XLSX from 'xlsx';
 import type { STRProfile } from './constants';
 
 interface FileProcessingOptions {

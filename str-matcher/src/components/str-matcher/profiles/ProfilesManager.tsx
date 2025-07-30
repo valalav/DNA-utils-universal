@@ -4,7 +4,35 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Search, Filter, Download, Trash2 } from 'lucide-react';
 import type { STRProfile } from '@/utils/constants';
-import { FormControls } from '@/components/ui/form';
+// Basic form controls implementation
+const FormControls = {
+  Input: ({ placeholder, value, onChange, startIcon, title }: any) => (
+    <div className="relative">
+      {startIcon && <span className="absolute left-3 top-1/2 -translate-y-1/2">{startIcon}</span>}
+      <input
+        type="text"
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        className="w-full pl-10 pr-4 py-2 border rounded-md"
+        aria-label={placeholder}
+        title={title || placeholder}
+      />
+    </div>
+  ),
+  Checkbox: ({ checked, onChange, title }: any) => (
+    <label className="flex items-center">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        className="w-4 h-4"
+        title={title}
+      />
+      <span className="sr-only">{title}</span>
+    </label>
+  )
+};
 import { dbManager } from '@/utils/storage/indexedDB';
 
 interface ProfilesManagerProps {

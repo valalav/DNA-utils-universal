@@ -34,6 +34,7 @@ interface HaplogroupInfoPopupProps {
 }
 
 const HaplogroupInfoPopup: React.FC<HaplogroupInfoPopupProps> = ({ haplogroup, onClose }) => {
+  const { t } = useTranslation();
   const [pathInfo, setPathInfo] = useState<{
     ftdna?: { path: string; url: string };
     yfull?: { path: string; url: string };
@@ -165,9 +166,11 @@ const HaplogroupInfoPopup: React.FC<HaplogroupInfoPopupProps> = ({ haplogroup, o
         >
           ✕
         </button>
-        <h3 className="text-2xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">Haplogroup: {haplogroup}</h3>
+        <h3 className="text-2xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
+          {t('haplogroupInfo.title', { haplogroup })}
+        </h3>
         
-        {loading && <div className="text-center py-4 animate-pulse">Loading...</div>}
+        {loading && <div className="text-center py-4 animate-pulse">{t('haplogroupInfo.loading')}</div>}
         {error && <div className="text-red-500 py-4">{error}</div>}
         
         {pathInfo && (
@@ -175,14 +178,14 @@ const HaplogroupInfoPopup: React.FC<HaplogroupInfoPopupProps> = ({ haplogroup, o
             {pathInfo.ftdna && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium">FTDNA Path:</span>
+                  <span className="font-medium">{t('haplogroupInfo.ftdnaPath')}</span>
                   <a
                     href={pathInfo.ftdna.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:text-blue-800 flex items-center gap-1 hover:underline transition-all"
                   >
-                    View in FTDNA <ExternalLink className="w-4 h-4" />
+                    {t('haplogroupInfo.viewFtdna')} <ExternalLink className="w-4 h-4" />
                   </a>
                 </div>
                 <div className="bg-gradient-to-r from-gray-50 to-gray-100/60 p-5 rounded-xl text-sm shadow-inner border border-gray-200/50">
@@ -194,14 +197,14 @@ const HaplogroupInfoPopup: React.FC<HaplogroupInfoPopupProps> = ({ haplogroup, o
             {pathInfo.yfull && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium">YFull Path:</span>
+                  <span className="font-medium">{t('haplogroupInfo.yfullPath')}</span>
                   <a
                     href={pathInfo.yfull.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-green-600 hover:text-green-800 flex items-center gap-1 hover:underline transition-all"
                   >
-                    View in YFull <ExternalLink className="w-4 h-4" />
+                    {t('haplogroupInfo.viewYfull')} <ExternalLink className="w-4 h-4" />
                   </a>
                 </div>
                 <div className="bg-gradient-to-r from-gray-50 to-gray-100/60 p-5 rounded-xl text-sm shadow-inner border border-gray-200/50">
@@ -311,7 +314,7 @@ const MatchesTable: React.FC<MatchesTableProps> = ({
 
   // Cache marker rarity calculations
   const markerRarityCache = useMemo(() => {
-    const cache: Record<string, Record<string, { rarity: number; rarityStyle?: React.CSSProperties }>> = {};
+    const cache: Record<string, Record<string, { rarity: number; rarityClass?: string }>> = {};
     
     orderedMarkers.forEach(marker => {
       cache[marker] = {};
@@ -323,16 +326,23 @@ const MatchesTable: React.FC<MatchesTableProps> = ({
         const matchValue = match.profile.markers[marker];
         if (!matchValue) return;
         
-        const result = calculateMarkerRarity(matches, marker, matchValue, queryValue);
-        cache[marker][matchValue] = result;
+        const { rarity, rarityStyle } = calculateMarkerRarity(matches, marker, matchValue, queryValue);
+        let rarityClass = '';
+        if (rarityStyle?.backgroundColor) {
+          if (rarityStyle.backgroundColor.includes('f0fdf4')) rarityClass = 'marker-rarity-common';
+          else if (rarityStyle.backgroundColor.includes('ecfdf5')) rarityClass = 'marker-rarity-uncommon';
+          else if (rarityStyle.backgroundColor.includes('f0f9ff')) rarityClass = 'marker-rarity-rare';
+          else if (rarityStyle.backgroundColor.includes('eff6ff')) rarityClass = 'marker-rarity-very-rare';
+        }
+        cache[marker][matchValue] = { rarity, rarityClass };
       });
     });
     
     return cache;
   }, [matches, query, orderedMarkers]);
 
-  const getRarityStyle = useCallback((marker: string, value: string) => {
-    return markerRarityCache[marker]?.[value]?.rarityStyle;
+  const getRarityClass = useCallback((marker: string, value: string) => {
+    return markerRarityCache[marker]?.[value]?.rarityClass || '';
   }, [markerRarityCache]);
 
   const renderMarkerCell = (
@@ -345,14 +355,15 @@ const MatchesTable: React.FC<MatchesTableProps> = ({
     }
 
     const diff = calculateMarkerDifference(queryValue, matchValue, marker, marker in palindromes, calculationMode);
-    const { rarityStyle } = calculateMarkerRarity(matches, marker, matchValue, queryValue);
+    const { rarity } = calculateMarkerRarity(matches, marker, matchValue, queryValue);
+    const rarityClass = getRarityClass(marker, matchValue);
 
     return (
       <td key={marker} className="border border-border-light p-0 w-8 h-8">
-        <div 
-          style={rarityStyle}
-          className="flex items-center justify-center h-full w-full"
+        <div
+          className={`table-cell-center ${getRarityClass(marker, matchValue)}`}
           title={`${marker}: ${matchValue}`}
+          aria-label={`Marker ${marker} value ${matchValue}`}
         >
           {diff !== 0 && !isNaN(diff) && (
             <span className={
@@ -470,6 +481,8 @@ const MatchesTable: React.FC<MatchesTableProps> = ({
                     ...prev,
                     [marker]: e.target.checked
                   }))}
+                  aria-label={`${t('table.toggleMarkerFilter')} ${marker}`}
+                  title={`${t('table.toggleMarkerFilter')} ${marker}`}
                 />
               </th>
             ))}
@@ -491,9 +504,10 @@ const MatchesTable: React.FC<MatchesTableProps> = ({
                     className="absolute -top-1 right-1 text-error hover:text-error/80 transition-colors" 
                     title={t('table.removeMarker', { marker })}
                   >×</button>
-                  <div 
-                    className="absolute -rotate-90 origin-left whitespace-nowrap text-sm font-bold text-black" 
-                    style={{left: '50%', bottom: '8px'}}
+                  <div
+                    className="rotated-text"
+                    aria-hidden="true"
+                    role="presentation"
                   >{marker}</div>
                 </div>
               </th>
@@ -582,14 +596,14 @@ const MatchesTable: React.FC<MatchesTableProps> = ({
                 }
 
                 const diff = calculateMarkerDifference(queryValue, matchValue, marker, marker in palindromes, calculationMode);
-                const rarityStyle = getRarityStyle(marker, matchValue);
+                const rarityClass = getRarityClass(marker, matchValue);
 
                 return (
                   <td key={marker} className="border border-border-light p-0 w-6 h-8">
                     <div 
-                      style={rarityStyle}
-                      className="flex items-center justify-center h-full w-6 overflow-hidden"
+                      className={`flex items-center justify-center h-full w-6 overflow-hidden ${rarityClass}`}
                       title={matchValue}
+                      aria-label={`${marker} value ${matchValue}`}
                     >
                       {!isNaN(diff) && diff > 0 && (
                         <span className={

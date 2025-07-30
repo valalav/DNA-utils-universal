@@ -22,7 +22,7 @@ const ColorSchemeApplier = ({ children }: { children: React.ReactNode }) => {
     if (scheme?.colors) {
       // Применяем все цвета через CSS переменные
       Object.entries(scheme.colors).forEach(([key, value]) => {
-        document.documentElement.style.setProperty(`--${key}`, value);
+        document.documentElement.style.setProperty(`--${key}`, value as string);
       });
     } else {
       // Если схема не найдена, используем классическую

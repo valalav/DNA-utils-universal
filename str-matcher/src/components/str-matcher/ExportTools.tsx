@@ -57,9 +57,11 @@ export const exportMatches = async (matches: STRMatch[], options: ExportOptions)
 
    try {
      const canvas = await html2canvas(table as HTMLElement, {
+       background: '#ffffff',
        scale: 2,
-       backgroundColor: '#ffffff'
-     });
+       logging: false,
+       useCORS: true
+     } as any);
 
      const link = document.createElement('a');
      link.download = 'str_matches.jpg';
