@@ -1,14 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    workerThreads: true,
-    webpackBuildWorker: true
-  },
+  // experimental: {
+  //   workerThreads: true,
+  //   webpackBuildWorker: true
+  // },
   async rewrites() {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:9003/api/:path*',
+        destination: `${process.env.API_URL || 'http://localhost:9003'}/api/:path*`,
       },
     ]
   }
