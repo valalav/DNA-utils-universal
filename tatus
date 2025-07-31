@@ -1,0 +1,10 @@
+[33m9de8c58[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m feat: resolve port conflicts and improve marker calculations in STR Matcher
+[33mae82a13[m feat: add scripts and documentation for STR Matcher container setup and troubleshooting
+[33m86c8c4c[m feat: update Vite server port to 9002 for consistency with project configuration
+[33m113a0e9[m feat: update API destination in next.config.js to use NEXT_PUBLIC_API_URL and add update script for deployment
+[33mfd1dbc3[m chore: update eslint and related dependencies to latest versions
+[33m0958686[m feat: update API destination to use environment variable for flexibility
+[33m995c1e3[m feat: refactor subclade checking logic and remove unused parameters in haplogroup services
+[33m95922ad[m feat: implement marker highlighting mechanism with CSS classes and color coding
+[33m18da423[m feat: update rarity classes and styles in MatchesTable and DataRepositories
+[33m00a8c89[m feat: update package dependencies and add new CSS styles
