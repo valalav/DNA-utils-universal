@@ -1,13 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9003/api';
+const API_URL = '/api';
 
 export const useHaplogroups = () => {
     const [filterHaplogroup, setFilterHaplogroup] = useState<string>('');
     const [includeSubclades, setIncludeSubclades] = useState<boolean>(true);
     const [showEmptyHaplogroups, setShowEmptyHaplogroups] = useState<boolean>(true);
-    const [showNonNegative, setShowNonNegative] = useState<boolean>(false);
     const resultsCache = useRef(new Map<string, boolean>());
 
     const checkHaplogroupMatch = async (haplogroup: string): Promise<boolean> => {
@@ -32,8 +31,7 @@ export const useHaplogroups = () => {
             try {
                 const response = await axios.post(`${API_URL}/check-subclade`, {
                     haplogroup,
-                    parentHaplogroup: filterHaplogroup,
-                    showNonNegative
+                    parentHaplogroup: filterHaplogroup
                 });
 
                 const isSubclade = response.data.isSubclade;
@@ -60,8 +58,6 @@ export const useHaplogroups = () => {
         setIncludeSubclades,
         showEmptyHaplogroups,
         setShowEmptyHaplogroups,
-        showNonNegative,
-        setShowNonNegative,
         checkHaplogroupMatch
     };
 }; 

@@ -473,9 +473,8 @@ class HaploTree {
         return match ? match[1] : null;
     }
 
-    isSubclade(haplogroup, parentHaplogroup, showNonNegative = false) {
-        console.log('Checking if', haplogroup, 'is subclade of', parentHaplogroup, 
-            showNonNegative ? '(including non-negative)' : '');
+    isSubclade(haplogroup, parentHaplogroup) {
+        console.log('Checking if', haplogroup, 'is subclade of', parentHaplogroup);
 
         // Проверяем базовые гаплогруппы
         const baseHaplo = this.getBaseHaplogroup(haplogroup);
@@ -487,17 +486,17 @@ class HaploTree {
         }
 
         // Находим узлы
-        const haplo = this.findHaplogroup(haplogroup);
-        const parent = this.findHaplogroup(parentHaplogroup);
+        const haploNode = this.findHaplogroup(haplogroup);
+        const parentNode = this.findHaplogroup(parentHaplogroup);
 
-        if (!haplo || !parent) {
-            console.log('One of haplogroups not found:', { haplo, parent });
+        if (!haploNode || !parentNode) {
+            console.log('One of haplogroups not found:', { haplo: haploNode, parent: parentNode });
             return false;
         }
 
         // Получаем пути для обеих гаплогрупп
-        const haploDetails = this.getHaplogroupDetails(haplo.haplogroupId);
-        const parentDetails = this.getHaplogroupDetails(parent.haplogroupId);
+        const haploDetails = this.getHaplogroupDetails(haploNode.haplogroupId);
+        const parentDetails = this.getHaplogroupDetails(parentNode.haplogroupId);
 
         if (!haploDetails?.path?.nodes || !parentDetails?.path?.nodes) {
             console.log('No path found for one of haplogroups');
@@ -507,31 +506,21 @@ class HaploTree {
         const haploPath = haploDetails.path.nodes.map(node => node.name);
         const parentPath = parentDetails.path.nodes.map(node => node.name);
 
-        if (showNonNegative) {
-            // Проверяем, является ли путь целевой гаплогруппы начальной частью пути проверяемой
-            const isNonNegative = haploPath.slice(0, parentPath.length).every(
-                (name, index) => name === parentPath[index]
-            );
-
-            console.log('Path check (non-negative):', {
-                haploPath,
-                parentPath,
-                isNonNegative
-            });
-
-            return isNonNegative;
-        } else {
-            // Стандартная проверка на точное включение
-            const isSubclade = haploPath.includes(parentHaplogroup);
-
-            console.log('Path check:', {
-                path: haploPath,
-                searchFor: parentHaplogroup,
-                isSubclade
-            });
-
-            return isSubclade;
+        // Единственно верная проверка: является ли путь родительской гаплогруппы
+        // начальным сегментом пути дочерней гаплогруппы.
+        if (parentPath.length > haploPath.length) {
+            return false;
         }
+
+        const isSubclade = parentPath.every((name, index) => name === haploPath[index]);
+
+        console.log('Path check:', {
+            haploPath,
+            parentPath,
+            isSubclade
+        });
+
+        return isSubclade;
     }
 }
 

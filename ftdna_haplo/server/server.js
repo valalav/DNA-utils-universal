@@ -127,13 +127,12 @@ app.get(`${API_PATH}/haplogroup-path/:haplogroup`, async (req, res) => {
 
 app.post(`${API_PATH}/check-subclade`, async (req, res) => {
     try {
-        const { haplogroup, parentHaplogroup, showNonNegative } = req.body;
-        console.log('Checking subclade:', { haplogroup, parentHaplogroup, showNonNegative });
+        const { haplogroup, parentHaplogroup } = req.body;
+        console.log('Checking subclade:', { haplogroup, parentHaplogroup });
 
         const isSubcladeResult = await haplogroupService.checkSubclade(
-            haplogroup, 
-            parentHaplogroup, 
-            showNonNegative
+            haplogroup,
+            parentHaplogroup
         );
 
         res.json({ isSubclade: isSubcladeResult });

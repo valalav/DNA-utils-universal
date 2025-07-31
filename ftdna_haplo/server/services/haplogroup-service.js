@@ -76,7 +76,7 @@ class HaplogroupService {
         return result;
     }
 
-    async checkSubclade(haplogroup, parentHaplogroup, showNonNegative = false) {
+    async checkSubclade(haplogroup, parentHaplogroup) {
         if (!haplogroup || !parentHaplogroup) {
             console.log('Missing required parameters:', { haplogroup, parentHaplogroup });
             return false;
@@ -85,12 +85,12 @@ class HaplogroupService {
         let isSubcladeResult = false;
 
         if (this.ftdnaTree) {
-            isSubcladeResult = this.ftdnaTree.isSubclade(haplogroup, parentHaplogroup, showNonNegative);
+            isSubcladeResult = this.ftdnaTree.isSubclade(haplogroup, parentHaplogroup);
             console.log('FTDNA check result:', isSubcladeResult);
         }
 
         if (!isSubcladeResult && this.yfullTree) {
-            isSubcladeResult = this.yfullTree.isSubclade(haplogroup, parentHaplogroup, showNonNegative);
+            isSubcladeResult = this.yfullTree.isSubclade(haplogroup, parentHaplogroup);
             console.log('YFull check result:', isSubcladeResult);
         }
 

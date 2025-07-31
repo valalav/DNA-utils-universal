@@ -140,8 +140,6 @@ const STRMatcher: React.FC = () => {
     setIncludeSubclades,
     showEmptyHaplogroups,
     setShowEmptyHaplogroups,
-    showNonNegative,
-    setShowNonNegative,
     checkHaplogroupMatch
   } = useHaplogroups();
 
@@ -696,8 +694,6 @@ const STRMatcher: React.FC = () => {
                     setIncludeSubclades={setIncludeSubclades}
                     showEmptyHaplogroups={showEmptyHaplogroups}
                     setShowEmptyHaplogroups={setShowEmptyHaplogroups}
-                    showNonNegative={showNonNegative}
-                    setShowNonNegative={setShowNonNegative}
                     onApplyFilter={handleApplyFilter}
                     onResetFilter={handleResetFilter}
                     onKeepFilteredOnly={handleKeepFilteredOnly}

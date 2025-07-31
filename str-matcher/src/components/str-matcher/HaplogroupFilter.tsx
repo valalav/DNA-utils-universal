@@ -12,8 +12,6 @@ interface HaplogroupFilterProps {
     setIncludeSubclades: (value: boolean) => void;
     showEmptyHaplogroups: boolean;
     setShowEmptyHaplogroups: (value: boolean) => void;
-    showNonNegative: boolean;
-    setShowNonNegative: (value: boolean) => void;
     onApplyFilter: () => void;
     onKeepFilteredOnly: () => void;
     onRemoveFiltered: () => void;
@@ -28,8 +26,6 @@ export const HaplogroupFilter: React.FC<HaplogroupFilterProps> = ({
     setIncludeSubclades,
     showEmptyHaplogroups,
     setShowEmptyHaplogroups,
-    showNonNegative,
-    setShowNonNegative,
     onApplyFilter,
     onKeepFilteredOnly,
     onRemoveFiltered,
@@ -122,20 +118,6 @@ export const HaplogroupFilter: React.FC<HaplogroupFilterProps> = ({
                     </label>
                 </div>
 
-                <div className="flex items-center space-x-2">
-                    <Checkbox
-                        id={`${id}-show-non-negative`}
-                        checked={showNonNegative}
-                        onCheckedChange={(checked) => {
-                            if (typeof checked === 'boolean') {
-                                setShowNonNegative(checked);
-                            }
-                        }}
-                    />
-                    <label htmlFor={`${id}-show-non-negative`} className="text-sm">
-                        {t('haplogroups.showNonNegative')}
-                    </label>
-                </div>
             </div>
         </div>
     );
