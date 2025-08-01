@@ -5,6 +5,7 @@ import { useDispatch } from 'react-redux';
 import { colorSchemes as predefinedColorSchemes } from '@/config/colorSchemes';
 import { addCustomColorScheme } from '@/store/userProfile';
 import { Download, Upload, X } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type ColorSchemeKey = keyof typeof predefinedColorSchemes;
 type ColorKey = 
@@ -247,13 +248,14 @@ interface Props {
   onSave?: (colors: Record<string, string>) => void;
 }
 
-export const CustomSchemeEditor: React.FC<Props> = ({ 
-  customColors = {}, 
-  baseScheme = 'classic', 
+export const CustomSchemeEditor: React.FC<Props> = ({
+  customColors = {},
+  baseScheme = 'classic',
   onClose,
-  onSave 
+  onSave
 }) => {
   const dispatch = useDispatch();
+  const { t } = useTranslation();
   const [schemeName, setSchemeName] = useState('');
   const [colors, setColors] = useState<Partial<Record<ColorKey, string>>>(customColors);
 
@@ -341,13 +343,13 @@ export const CustomSchemeEditor: React.FC<Props> = ({
       <div className="bg-background-primary rounded-lg w-full max-w-4xl mx-4">
         <div className="sticky top-0 z-10 flex justify-between items-center p-4 border-b border-border-light bg-background-primary">
           <div className="flex items-center gap-4">
-            <h2 className="text-xl font-semibold">Create Custom Color Scheme</h2>
+            <h2 className="text-xl font-semibold">{t('colorSchemes.customScheme.title')}</h2>
             <input
               type="text"
               value={schemeName}
               onChange={(e) => setSchemeName(e.target.value)}
               className="px-3 py-1 border rounded text-sm input-primary"
-              placeholder="Scheme Name"
+              placeholder={t('colorSchemes.customScheme.schemeName')}
             />
           </div>
           
@@ -355,13 +357,13 @@ export const CustomSchemeEditor: React.FC<Props> = ({
             <button
               onClick={exportScheme}
               className="p-2 hover:bg-background-secondary rounded transition-colors"
-              title="Export Scheme"
+              title={t('colorSchemes.customScheme.exportScheme')}
             >
               <Download className="w-4 h-4" />
             </button>
-            <label 
+            <label
               className="p-2 hover:bg-background-secondary rounded transition-colors cursor-pointer"
-              title="Import Scheme"
+              title={t('colorSchemes.customScheme.importScheme')}
             >
               <Upload className="w-4 h-4" />
               <input
@@ -374,7 +376,7 @@ export const CustomSchemeEditor: React.FC<Props> = ({
             <button
               onClick={onClose}
               className="p-2 hover:bg-background-secondary rounded transition-colors"
-              title="Close"
+              title={t('colorSchemes.customScheme.close')}
             >
               <X className="w-4 h-4" />
             </button>
@@ -413,18 +415,18 @@ export const CustomSchemeEditor: React.FC<Props> = ({
         </div>
 
         <div className="sticky bottom-0 z-10 flex justify-end gap-2 p-4 border-t border-border-light bg-background-primary">
-          <button 
+          <button
             onClick={onClose}
             className="px-4 py-2 text-text-secondary hover:text-text-primary transition-colors"
           >
-            Cancel
+            {t('colorSchemes.customScheme.cancel')}
           </button>
           <button
             onClick={handleSubmit}
             disabled={!schemeName.trim()}
             className="px-4 py-2 bg-primary text-white rounded hover:bg-primary-hover disabled:opacity-50 transition-colors"
           >
-            Create Scheme
+            {t('colorSchemes.customScheme.createScheme')}
           </button>
         </div>
       </div>

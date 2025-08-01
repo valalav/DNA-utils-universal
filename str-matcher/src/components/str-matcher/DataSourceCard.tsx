@@ -13,9 +13,6 @@ interface DataSourceCardProps {
   loading: boolean;
 }
 
-/**
- * Компонент карточки источника данных в современном flat-дизайне
- */
 const DataSourceCard: React.FC<DataSourceCardProps> = ({
   repository,
   isSelected,
@@ -79,15 +76,15 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
         {/* Количество профилей и кнопка загрузки на одной строке */}
         <div className="flex justify-between items-center gap-1">
           <div className="text-xs font-medium" style={{ fontFamily: 'var(--font-roboto-mono)', color: categoryColor }}>
-            {repository.id === 'aadna' ? '~1,500' : 
-             repository.id === 'G' ? '~13,000' : 
-             repository.id === 'r1a' ? '~25,000' : 
-             repository.id === 'J2' ? '~19,000' : 
-             repository.id === 'J1' ? '~18,000' : 
-             repository.id === 'E' ? '~23,000' : 
-             repository.id === 'I' ? '~56,000' : 
-             repository.id === 'r1b' ? '~4,300' : 
-             repository.id === 'Others' ? '~20,000' : '~1,000'}
+            {repository.id === 'aadna' ? t('database.profileCounts.aadna') :
+             repository.id === 'G' ? t('database.profileCounts.G') :
+             repository.id === 'r1a' ? t('database.profileCounts.r1a') :
+             repository.id === 'J2' ? t('database.profileCounts.J2') :
+             repository.id === 'J1' ? t('database.profileCounts.J1') :
+             repository.id === 'E' ? t('database.profileCounts.E') :
+             repository.id === 'I' ? t('database.profileCounts.I') :
+             repository.id === 'r1b' ? t('database.profileCounts.r1b') :
+             repository.id === 'Others' ? t('database.profileCounts.Others') : t('database.profileCounts.default')}
           </div>
           <button
             onClick={onLoad}

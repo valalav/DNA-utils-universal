@@ -62,7 +62,7 @@ const DatabaseInput: React.FC<DatabaseInputProps> = ({ onDataLoaded, onError, re
           <div className="flex-1">
             <textarea
               className="w-full h-32 p-2 border rounded-md bg-background-primary resize-none"
-              placeholder="Вставьте CSV данные или перетащите файл сюда"
+              placeholder={t('database.pasteOrDrop')}
               onChange={(e) => handleTextInput(e.target.value)}
             />
           </div>
@@ -74,11 +74,11 @@ const DatabaseInput: React.FC<DatabaseInputProps> = ({ onDataLoaded, onError, re
                 onChange={handleFileUpload}
                 className="hidden"
               />
-              Загрузить CSV
+              {t('database.uploadCSV')}
             </label>
             <div className="text-sm text-text-secondary text-center">
-              {loading ? "Загрузка..." : (
-                recordCount > 0 ? `Профилей в базе: ${recordCount}` : "База пуста"
+              {loading ? t('database.loadingData') : (
+                recordCount > 0 ? t('database.profilesInDatabase', { count: recordCount }) : t('database.databaseEmpty')
               )}
             </div>
           </div>

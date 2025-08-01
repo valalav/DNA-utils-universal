@@ -14,14 +14,14 @@ export const exportMatches = async (matches: STRMatch[], options: ExportOptions)
 
  if (options.format === 'csv') {
    const headers = [
-     'Kit Number', 
-     'Name', 
-     'Country', 
-     'Haplogroup',
-     'Genetic Distance',
-     'Compared Markers',
-     'Identical Markers',
-     'Percent Identical'
+     t('matches.exportHeaders.kitNumber'),
+     t('matches.exportHeaders.name'),
+     t('matches.exportHeaders.country'),
+     t('matches.exportHeaders.haplogroup'),
+     t('matches.exportHeaders.geneticDistance'),
+     t('matches.exportHeaders.comparedMarkers'),
+     t('matches.exportHeaders.identicalMarkers'),
+     t('matches.exportHeaders.percentIdentical')
    ];
 
    const rows = matches.map(match => [
@@ -43,7 +43,7 @@ export const exportMatches = async (matches: STRMatch[], options: ExportOptions)
    const url = URL.createObjectURL(blob);
    const link = document.createElement('a');
    link.href = url;
-   link.download = 'str_matches.csv';
+   link.download = t('matches.exportFileNames.csv');
    document.body.appendChild(link);
    link.click();
    document.body.removeChild(link);
@@ -64,7 +64,7 @@ export const exportMatches = async (matches: STRMatch[], options: ExportOptions)
      } as any);
 
      const link = document.createElement('a');
-     link.download = 'str_matches.jpg';
+     link.download = t('matches.exportFileNames.jpg');
      link.href = canvas.toDataURL('image/jpeg', 0.9);
      document.body.appendChild(link);
      link.click();

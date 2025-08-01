@@ -7,11 +7,6 @@ import { selectAppearance, updateAppearance } from '@/store/userProfile';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Language } from '@/config/translations';
 
-const languages: Record<Language, string> = {
- en: 'English',
- ru: 'Русский'
-};
-
 export const LanguageSelector = () => {
  const dispatch = useDispatch();
  const { t } = useTranslation();
@@ -20,6 +15,8 @@ export const LanguageSelector = () => {
  const handleLanguageChange = (lang: Language) => {
    dispatch(updateAppearance({ language: lang }));
  };
+
+ const languages: Language[] = ['en', 'ru'];
 
  return (
    <div className="flex items-center gap-2">
@@ -31,9 +28,9 @@ export const LanguageSelector = () => {
                 text-sm focus:border-accent focus:outline-none cursor-pointer"
        aria-label={t('header.dropdownTitle')}
      >
-       {Object.entries(languages).map(([code, name]) => (
+       {languages.map((code) => (
          <option key={code} value={code}>
-           {name}
+           {t(`languages.${code}`)}
          </option>
        ))}
      </select>

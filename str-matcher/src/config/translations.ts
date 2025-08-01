@@ -7,7 +7,7 @@ export const translations = {
       create: 'Create',
       delete: 'Delete',
       loading: 'Loading...',
-      export: 'Export', 
+      export: 'Export',
       refresh: 'Refresh',
       apply: 'Apply',
       reset: 'Reset',
@@ -28,15 +28,22 @@ export const translations = {
       },
       actions: {
         populateMarkers: 'Populate Markers',
-        reset: 'Reset', 
+        reset: 'Reset',
         search: 'Search'
-      }
+      },
+      filters: 'Filters',
+      byName: 'By Name',
+      byCategory: 'By Category'
     },
     header: {
       title: 'STR Matcher',
       language: 'Language',
       dropdownTitle: 'Select language',
       instructions: 'Instructions'
+    },
+    languages: {
+      en: 'English',
+      ru: 'Russian'
     },
     colorSchemes: {
       classic: 'Classic Blue',
@@ -49,8 +56,126 @@ export const translations = {
       forest: 'Forest',
       grape: 'Grape',
       custom: 'Custom',
+      dark: 'Dark',
       selectScheme: 'Select color scheme',
-      createCustom: 'Create custom scheme'
+      createCustom: 'Create custom scheme',
+      customScheme: {
+        title: 'Create Custom Color Scheme',
+        schemeName: 'Scheme Name',
+        exportScheme: 'Export Scheme',
+        importScheme: 'Import Scheme',
+        close: 'Close',
+        cancel: 'Cancel',
+        createScheme: 'Create Scheme',
+        colorGroups: {
+          main: 'Main Colors',
+          backgrounds: 'Backgrounds',
+          text: 'Text',
+          borders: 'Borders',
+          system: 'System',
+          markerDifferences: 'Marker Differences',
+          markerRarity: 'Marker Rarity',
+          controls: 'Controls',
+          overlays: 'Overlays',
+          formControls: 'Form Controls',
+          tables: 'Tables',
+          markerComponents: 'Marker Components',
+          actionButtons: 'Action Buttons',
+          filtersAndSearch: 'Filters and Search',
+          panelsAndSections: 'Panels and Sections',
+          formElements: 'Form Elements'
+        },
+        colorLabels: {
+          primary: 'Primary',
+          primaryHover: 'Primary Hover',
+          secondary: 'Secondary',
+          accent: 'Accent',
+          backgroundPrimary: 'Primary Background',
+          backgroundSecondary: 'Secondary Background',
+          backgroundTertiary: 'Tertiary Background',
+          backgroundHover: 'Hover Background',
+          backgroundSelected: 'Selected Background',
+          textPrimary: 'Primary Text',
+          textSecondary: 'Secondary Text',
+          textMuted: 'Muted Text',
+          textInverse: 'Inverse Text',
+          textLink: 'Link Text',
+          textLinkHover: 'Link Hover',
+          borderLight: 'Light Border',
+          borderMedium: 'Medium Border',
+          borderDark: 'Dark Border',
+          borderFocus: 'Focus Border',
+          success: 'Success',
+          warning: 'Warning',
+          error: 'Error',
+          info: 'Info',
+          diff1: 'Small Difference',
+          diff2: 'Medium Difference',
+          diff3: 'Large Difference',
+          rarity1: 'Very Rare',
+          rarity2: 'Rare',
+          rarity3: 'Uncommon',
+          rarity4: 'Common',
+          rarity5: 'Very Common',
+          buttonPrimary: 'Primary Button',
+          buttonPrimaryHover: 'Primary Button Hover',
+          buttonSecondary: 'Secondary Button',
+          buttonSecondaryHover: 'Secondary Button Hover',
+          inputBackground: 'Input Background',
+          inputBorder: 'Input Border',
+          inputFocus: 'Input Focus',
+          overlay: 'Overlay Background',
+          shadowSm: 'Small Shadow',
+          shadowMd: 'Medium Shadow',
+          shadowLg: 'Large Shadow',
+          controlBackground: 'Control Background',
+          controlBorder: 'Control Border',
+          controlText: 'Control Text',
+          controlPlaceholder: 'Placeholder',
+          controlHover: 'Hover State',
+          controlFocus: 'Focus State',
+          tableHeaderBackground: 'Header Background',
+          tableHeaderText: 'Header Text',
+          tableRowHover: 'Row Hover',
+          tableBorder: 'Table Border',
+          tableCellBackground: 'Cell Background',
+          markerBackground: 'Marker Background',
+          markerBorder: 'Marker Border',
+          markerText: 'Marker Text',
+          markerHover: 'Marker Hover',
+          markerActive: 'Marker Active',
+          markerHeaderBackground: 'Header Background',
+          actionPrimaryBackground: 'Primary Background',
+          actionPrimaryText: 'Primary Text',
+          actionPrimaryHover: 'Primary Hover',
+          actionSecondaryBackground: 'Secondary Background',
+          actionSecondaryText: 'Secondary Text',
+          actionSecondaryHover: 'Secondary Hover',
+          actionDangerBackground: 'Danger Background',
+          actionDangerText: 'Danger Text',
+          actionDangerHover: 'Danger Hover',
+          filterBackground: 'Filter Background',
+          filterBorder: 'Filter Border',
+          filterText: 'Filter Text',
+          filterPlaceholder: 'Filter Placeholder',
+          searchBackground: 'Search Background',
+          searchBorder: 'Search Border',
+          searchText: 'Search Text',
+          searchPlaceholder: 'Search Placeholder',
+          panelBackground: 'Panel Background',
+          panelBorder: 'Panel Border',
+          sectionBackground: 'Section Background',
+          sectionBorder: 'Section Border',
+          sectionHeaderBackground: 'Header Background',
+          sectionHeaderText: 'Header Text',
+          checkboxBackground: 'Checkbox Background',
+          checkboxBorder: 'Checkbox Border',
+          checkboxChecked: 'Checkbox Checked',
+          radioBackground: 'Radio Background',
+          radioBorder: 'Radio Border',
+          radioChecked: 'Radio Checked'
+        }
+      }
     },
     loadedKits: {
       search: 'Search kits...',
@@ -58,6 +183,10 @@ export const translations = {
       noSearchResults: 'No matching kits found',
       noKits: 'No kits loaded',
       totalCount: '{count} kits loaded'
+    },
+    aadna: {
+      kitsTitle: 'AADNA Kits',
+      noKitsFound: 'No AADNA kits found'
     },
     searchHistory: {
       noHistory: 'No search history',
@@ -85,6 +214,11 @@ export const translations = {
       filterHaplo: 'Filter Haplogroup',
       actions: 'Actions',
       columnsToShow: 'Columns to show'
+    },
+    filters: {
+      kit_number: 'Kit Number Filter',
+      name: 'Name Filter',
+      country: 'Country Filter'
     },
     input: {
       pasteDatabase: 'Paste database here',
@@ -114,10 +248,10 @@ export const translations = {
       searchInProgress: 'Search in progress...',
       history: 'Search History',
       noHistory: 'No search history',
-      calculationMode: 'Режим расчета ГД',
+      calculationMode: 'Calculation Mode',
       calculationModes: {
-        standard: 'Стандартный (макс. 2)',
-        extended: 'Расширенный (без ограничений)'
+        standard: 'Standard (max. 2)',
+        extended: 'Extended (no limits)'
       }
     },
     markers: {
@@ -145,12 +279,27 @@ export const translations = {
     matches: {
       found: '{count} matches found',
       exportCSV: 'Export CSV',
-      exportJPG: 'Export JPG'
+      exportJPG: 'Export JPG',
+      exportHeaders: {
+        kitNumber: 'Kit Number',
+        name: 'Name',
+        country: 'Country',
+        haplogroup: 'Haplogroup',
+        geneticDistance: 'Genetic Distance',
+        comparedMarkers: 'Compared Markers',
+        identicalMarkers: 'Identical Markers',
+        percentIdentical: 'Percent Identical'
+      },
+      exportFileNames: {
+        csv: 'str_matches.csv',
+        jpg: 'str_matches.jpg'
+      }
     },
     database: {
       loaded: 'Loaded ({count})',
       loadedProfiles: 'Loaded profiles',
       sources: 'Data Sources',
+      dataSources: 'Data Sources',
       stats: 'Database Statistics',
       totalProfiles: 'Total Profiles',
       totalMatches: 'Total Matches',
@@ -165,7 +314,27 @@ export const translations = {
       loadComplete: 'Load complete',
       manualInput: 'Manual Input',
       loadSelected: 'Load Selected ({count})',
-      clear: "Clear Database"
+      clear: "Clear Database",
+      pasteOrDrop: 'Paste CSV data or drop file here',
+      uploadCSV: 'Upload CSV',
+      loadingData: 'Loading...',
+      profilesInDatabase: '{count} profiles in database',
+      databaseEmpty: 'Database is empty',
+      loadError: 'Failed to load repository: {name}',
+      loadErrorWithMessage: 'Error loading data: {message}',
+      uncategorized: 'Uncategorized',
+      profileCounts: {
+        aadna: '~1,500',
+        G: '~13,000',
+        r1a: '~25,000',
+        J2: '~19,000',
+        J1: '~18,000',
+        E: '~23,000',
+        I: '~56,000',
+        r1b: '~4,300',
+        Others: '~20,000',
+        default: '~1,000'
+      }
     },
     errors: {
       enterKitNumber: 'Please enter Kit Number',
@@ -196,6 +365,14 @@ export const translations = {
       noHaplogroup: 'No haplogroup',
       keepFilteredOnly: 'Keep filtered only',
       removeFiltered: 'Remove filtered'
+    },
+    haplogroupInfo: {
+      title: 'Haplogroup: {haplogroup}',
+      loading: 'Loading...',
+      ftdnaPath: 'FTDNA Path',
+      viewFtdna: 'View in FTDNA',
+      yfullPath: 'YFull Path',
+      viewYfull: 'View in YFull'
     }
   },
   ru: {
@@ -203,7 +380,7 @@ export const translations = {
       search: 'Поиск',
       save: 'Сохранить',
       cancel: 'Отмена',
-      create: 'Создать', 
+      create: 'Создать',
       delete: 'Удалить',
       loading: 'Загрузка...',
       export: 'Экспорт',
@@ -221,7 +398,7 @@ export const translations = {
         reset: 'Сбросить',
         findMatches: 'Найти совпадения',
         remove: 'Удалить',
-        searchButton: 'Найти совпадения', 
+        searchButton: 'Найти совпадения',
         upload: 'Загрузить файл',
         addSource: 'Добавить источник'
       },
@@ -229,7 +406,10 @@ export const translations = {
         populateMarkers: 'Заполнить маркеры',
         reset: 'Сбросить',
         search: 'Поиск'
-      }
+      },
+      filters: 'Фильтры',
+      byName: 'По имени',
+      byCategory: 'По категории'
     },
     header: {
       title: 'STR Matcher',
@@ -237,19 +417,141 @@ export const translations = {
       dropdownTitle: 'Выбор языка',
       instructions: 'Инструкция'
     },
+    languages: {
+      en: 'Английский',
+      ru: 'Русский'
+    },
     colorSchemes: {
       classic: 'Классический синий',
       emerald: 'Изумрудный',
       ruby: 'Рубиновый',
       amethyst: 'Аметистовый',
       sunset: 'Закат',
-      slate: 'Графитовый', 
+      slate: 'Графитовый',
       ocean: 'Океан',
       forest: 'Лесной',
       grape: 'Виноградный',
       custom: 'Пользовательская',
+      dark: 'Темная',
       selectScheme: 'Выберите цветовую схему',
-      createCustom: 'Создать свою схему'
+      createCustom: 'Создать свою схему',
+      customScheme: {
+        title: 'Создать пользовательскую цветовую схему',
+        schemeName: 'Название схемы',
+        exportScheme: 'Экспортировать схему',
+        importScheme: 'Импортировать схему',
+        close: 'Закрыть',
+        cancel: 'Отмена',
+        createScheme: 'Создать схему',
+        colorGroups: {
+          main: 'Основные цвета',
+          backgrounds: 'Фоны',
+          text: 'Текст',
+          borders: 'Границы',
+          system: 'Системные',
+          markerDifferences: 'Различия маркеров',
+          markerRarity: 'Редкость маркеров',
+          controls: 'Элементы управления',
+          overlays: 'Наложения',
+          formControls: 'Элементы форм',
+          tables: 'Таблицы',
+          markerComponents: 'Компоненты маркеров',
+          actionButtons: 'Кнопки действий',
+          filtersAndSearch: 'Фильтры и поиск',
+          panelsAndSections: 'Панели и секции',
+          formElements: 'Элементы форм'
+        },
+        colorLabels: {
+          primary: 'Основной',
+          primaryHover: 'Основной при наведении',
+          secondary: 'Второстепенный',
+          accent: 'Акцент',
+          backgroundPrimary: 'Основной фон',
+          backgroundSecondary: 'Второстепенный фон',
+          backgroundTertiary: 'Третичный фон',
+          backgroundHover: 'Фон при наведении',
+          backgroundSelected: 'Выбранный фон',
+          textPrimary: 'Основной текст',
+          textSecondary: 'Второстепенный текст',
+          textMuted: 'Приглушенный текст',
+          textInverse: 'Инвертированный текст',
+          textLink: 'Текст ссылки',
+          textLinkHover: 'Ссылка при наведении',
+          borderLight: 'Светлая граница',
+          borderMedium: 'Средняя граница',
+          borderDark: 'Темная граница',
+          borderFocus: 'Граница фокуса',
+          success: 'Успех',
+          warning: 'Предупреждение',
+          error: 'Ошибка',
+          info: 'Информация',
+          diff1: 'Малое различие',
+          diff2: 'Среднее различие',
+          diff3: 'Большое различие',
+          rarity1: 'Очень редкий',
+          rarity2: 'Редкий',
+          rarity3: 'Нечастый',
+          rarity4: 'Частый',
+          rarity5: 'Очень частый',
+          buttonPrimary: 'Основная кнопка',
+          buttonPrimaryHover: 'Основная кнопка при наведении',
+          buttonSecondary: 'Второстепенная кнопка',
+          buttonSecondaryHover: 'Второстепенная кнопка при наведении',
+          inputBackground: 'Фон поля ввода',
+          inputBorder: 'Граница поля ввода',
+          inputFocus: 'Фокус поля ввода',
+          overlay: 'Фон наложения',
+          shadowSm: 'Маленькая тень',
+          shadowMd: 'Средняя тень',
+          shadowLg: 'Большая тень',
+          controlBackground: 'Фон элемента управления',
+          controlBorder: 'Граница элемента управления',
+          controlText: 'Текст элемента управления',
+          controlPlaceholder: 'Плейсхолдер',
+          controlHover: 'Элемент управления при наведении',
+          controlFocus: 'Фокус элемента управления',
+          tableHeaderBackground: 'Фон заголовка таблицы',
+          tableHeaderText: 'Текст заголовка таблицы',
+          tableRowHover: 'Строка таблицы при наведении',
+          tableBorder: 'Граница таблицы',
+          tableCellBackground: 'Фон ячейки таблицы',
+          markerBackground: 'Фон маркера',
+          markerBorder: 'Граница маркера',
+          markerText: 'Текст маркера',
+          markerHover: 'Маркер при наведении',
+          markerActive: 'Активный маркер',
+          markerHeaderBackground: 'Фон заголовка',
+          actionPrimaryBackground: 'Основной фон действия',
+          actionPrimaryText: 'Основной текст действия',
+          actionPrimaryHover: 'Основное действие при наведении',
+          actionSecondaryBackground: 'Второстепенный фон действия',
+          actionSecondaryText: 'Второстепенный текст действия',
+          actionSecondaryHover: 'Второстепенное действие при наведении',
+          actionDangerBackground: 'Фон опасного действия',
+          actionDangerText: 'Текст опасного действия',
+          actionDangerHover: 'Опасное действие при наведении',
+          filterBackground: 'Фон фильтра',
+          filterBorder: 'Граница фильтра',
+          filterText: 'Текст фильтра',
+          filterPlaceholder: 'Плейсхолдер фильтра',
+          searchBackground: 'Фон поиска',
+          searchBorder: 'Граница поиска',
+          searchText: 'Текст поиска',
+          searchPlaceholder: 'Плейсхолдер поиска',
+          panelBackground: 'Фон панели',
+          panelBorder: 'Граница панели',
+          sectionBackground: 'Фон секции',
+          sectionBorder: 'Граница секции',
+          sectionHeaderBackground: 'Фон заголовка',
+          sectionHeaderText: 'Текст заголовка',
+          checkboxBackground: 'Фон чекбокса',
+          checkboxBorder: 'Граница чекбокса',
+          checkboxChecked: 'Отмеченный чекбокс',
+          radioBackground: 'Фон радиокнопки',
+          radioBorder: 'Граница радиокнопки',
+          radioChecked: 'Отмеченная радиокнопка'
+        }
+      }
     },
     loadedKits: {
       search: 'Поиск наборов...',
@@ -257,6 +559,10 @@ export const translations = {
       noSearchResults: 'Наборы не найдены',
       noKits: 'Нет загруженных наборов',
       totalCount: 'Загружено наборов: {count}'
+    },
+    aadna: {
+      kitsTitle: 'Наборы AADNA',
+      noKitsFound: 'Наборы AADNA не найдены'
     },
     searchHistory: {
       noHistory: 'История поиска пуста',
@@ -284,6 +590,11 @@ export const translations = {
       filterHaplo: 'Фильтр гаплогруппы',
       actions: 'Действия',
       columnsToShow: 'Отображаемые колонки'
+    },
+    filters: {
+      kit_number: 'Фильтр по номеру набора',
+      name: 'Фильтр по имени',
+      country: 'Фильтр по стране'
     },
     input: {
       pasteDatabase: 'Вставьте базу данных сюда',
@@ -344,12 +655,27 @@ export const translations = {
     matches: {
       found: 'Найдено {count} совпадений',
       exportCSV: 'Экспорт CSV',
-      exportJPG: 'Экспорт JPG'
+      exportJPG: 'Экспорт JPG',
+      exportHeaders: {
+        kitNumber: 'Номер набора',
+        name: 'Имя',
+        country: 'Страна',
+        haplogroup: 'Гаплогруппа',
+        geneticDistance: 'Генетическая дистанция',
+        comparedMarkers: 'Сравненные маркеры',
+        identicalMarkers: 'Идентичные маркеры',
+        percentIdentical: 'Процент идентичности'
+      },
+      exportFileNames: {
+        csv: 'str_matches.csv',
+        jpg: 'str_matches.jpg'
+      }
     },
     database: {
       loaded: 'Загружено ({count})',
       loadedProfiles: 'Загружено профилей',
       sources: 'Источники данных',
+      dataSources: 'Источники данных',
       stats: 'Статистика базы',
       totalProfiles: 'Всего профилей',
       totalMatches: 'Всего совпадений',
@@ -364,7 +690,27 @@ export const translations = {
       loadComplete: 'Загрузка завершена',
       manualInput: 'Ручной ввод',
       loadSelected: 'Загрузить выбранное ({count})',
-      clear: "Очистить базу"
+      clear: "Очистить базу",
+      pasteOrDrop: 'Вставьте CSV данные или перетащите файл сюда',
+      uploadCSV: 'Загрузить CSV',
+      loadingData: 'Загрузка...',
+      profilesInDatabase: 'Профилей в базе: {count}',
+      databaseEmpty: 'База пуста',
+      loadError: 'Не удалось загрузить репозиторий: {name}',
+      loadErrorWithMessage: 'Ошибка загрузки данных: {message}',
+      uncategorized: 'Без категории',
+      profileCounts: {
+        aadna: '~1,500',
+        G: '~13,000',
+        r1a: '~25,000',
+        J2: '~19,000',
+        J1: '~18,000',
+        E: '~23,000',
+        I: '~56,000',
+        r1b: '~4,300',
+        Others: '~20,000',
+        default: '~1,000'
+      }
     },
     errors: {
       enterKitNumber: 'Введите номер набора',
@@ -395,6 +741,14 @@ export const translations = {
       noHaplogroup: 'Нет гаплогруппы',
       keepFilteredOnly: 'Оставить только отфильтрованные',
       removeFiltered: 'Удалить отфильтрованные'
+    },
+    haplogroupInfo: {
+      title: 'Гаплогруппа: {haplogroup}',
+      loading: 'Загрузка...',
+      ftdnaPath: 'Путь FTDNA',
+      viewFtdna: 'Открыть в FTDNA',
+      yfullPath: 'Путь YFull',
+      viewYfull: 'Открыть в YFull'
     }
   }
 } as const;
