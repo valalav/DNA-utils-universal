@@ -170,9 +170,8 @@ const handleLoadSingle = async (repoId: string) => {
                        repo.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        repo.category?.toLowerCase().includes(searchTerm.toLowerCase());
    
-   // Фильтр по категории
-   const matchesCategory = activeFilter === 'all' || 
-                         (repo.category?.toLowerCase() === activeFilter.toLowerCase());
+   // Фильтр по категории - всегда показываем только Y-DNA источники
+   const matchesCategory = repo.category?.toLowerCase() === 'y-dna';
    
    return matchesSearch && matchesCategory;
  });
@@ -182,8 +181,6 @@ const handleLoadSingle = async (repoId: string) => {
    switch (sortOrder) {
      case 'name':
        return a.name.localeCompare(b.name);
-     case 'category':
-       return (a.category || '').localeCompare(b.category || '');
      default:
        return 0;
    }
@@ -267,29 +264,6 @@ const handleLoadSingle = async (repoId: string) => {
        </div>
        
        <div className="flex items-center gap-1 ml-auto">
-         <Filter className="h-3.5 w-3.5 text-text-secondary" />
-         <span className="text-xs text-text-secondary">{t('common.filters')}:</span>
-         <div className="flex gap-1">
-           <button 
-             onClick={() => setActiveFilter('all')}
-             className={`px-2 py-0.5 text-xs rounded transition-all ${activeFilter === 'all' ? 'bg-flat-primary text-white' : 'bg-flat-background text-text-secondary hover:bg-flat-background/80'}`}
-           >
-             {t('common.all')}
-           </button>
-           <button 
-             onClick={() => setActiveFilter('Y-DNA')}
-             className={`px-2 py-0.5 text-xs rounded transition-all ${activeFilter === 'Y-DNA' ? 'bg-flat-primary text-white' : 'bg-flat-background text-text-secondary hover:bg-flat-background/80'}`}
-           >
-             Y-DNA
-           </button>
-           <button 
-             onClick={() => setActiveFilter('mtDNA')}
-             className={`px-2 py-0.5 text-xs rounded transition-all ${activeFilter === 'mtDNA' ? 'bg-flat-primary text-white' : 'bg-flat-background text-text-secondary hover:bg-flat-background/80'}`}
-           >
-             mtDNA
-           </button>
-         </div>
-         
          <div className="flex items-center gap-1 ml-2">
            {/* Visually hidden label for accessibility */}
            <label htmlFor="sortOrderSelect" className="sr-only">
@@ -303,7 +277,6 @@ const handleLoadSingle = async (repoId: string) => {
              className="sort-order-select bg-flat-background border border-flat-border rounded text-xs px-2 py-0.5 text-text-secondary"
            >
              <option value="name">{t('common.byName')}</option>
-             <option value="category">{t('common.byCategory')}</option>
            </select>
          </div>
        </div>
@@ -363,8 +336,6 @@ const handleLoadSingle = async (repoId: string) => {
              aria-label={t('database.sourceCategory')}
            >
              <option value="">{t('common.select')}</option>
-             <option value="Y-DNA">Y-DNA</option>
-             <option value="mtDNA">mtDNA</option>
              <option value="Other">Other</option>
            </select>
          </div>

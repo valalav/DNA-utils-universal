@@ -28,14 +28,12 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
     
     switch (category.toLowerCase()) {
       case 'y-dna':
-        return repository.name.includes('G') ? '#3a86ff' : 
-               repository.name.includes('R1a') ? '#4361ee' : 
+        return repository.name.includes('G') ? '#3a86ff' :
+               repository.name.includes('R1a') ? '#4361ee' :
                repository.name.includes('R1b') ? '#4895ef' :
-               repository.name.includes('J') ? '#4cc9f0' : 
-               repository.name.includes('E') ? '#4895ef' : 
+               repository.name.includes('J') ? '#4cc9f0' :
+               repository.name.includes('E') ? '#4895ef' :
                repository.name.includes('I') ? '#3a0ca3' : '#8d99ae';
-      case 'mtdna':
-        return '#f72585';
       default:
         return '#8d99ae';
     }
