@@ -176,6 +176,7 @@ celerybeat.pid
 
 # Data files (customize as needed)
 *.csv
+!ftdna_haplo/data/snps_hg38.csv
 # Игнорируем JSON файлы, но с исключениями для важных данных и конфигураций
 *.json
 !package.json
