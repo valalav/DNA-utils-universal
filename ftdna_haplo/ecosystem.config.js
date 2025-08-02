@@ -1,24 +1,20 @@
 module.exports = {
   apps: [{
-    name: "haplo-client",
-    cwd: "/root/ftdna_haplo/client",
-    script: "npm",
-    args: "run dev",
+    name: "ftdna-haplo-app",
+    script: "./server/server.js",
+    cwd: __dirname,
     env: {
       NODE_ENV: "production",
-    }
-  },
-  {
-    name: "haplo-server", 
-    cwd: "/root/ftdna_haplo/server",
-    script: "server.js",
-    env: {
-      NODE_ENV: "production",
-      PORT: 4000
+      PORT: 9003,
+      API_PATH: "/api",
+      // Укажите здесь домен, с которого будет доступен клиент в продакшене
+      // Например: "https://your-domain.com"
+      // Можно указать несколько через запятую: "https://domain1.com,https://domain2.com"
+      ALLOWED_ORIGINS: "" 
     },
     instances: 1,
     autorestart: true,
     watch: false,
     max_memory_restart: '1G'
   }]
-}
+};

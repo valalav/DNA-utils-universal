@@ -11,16 +11,18 @@ const app = express();
 const PORT = process.env.PORT || 9003;
 const API_PATH = process.env.API_PATH || '/api';
 
+// Define base directory for the application
+const APP_ROOT = path.join(__dirname, '..'); // This will be the ftdna_haplo directory
+
 // Initialize services
 let haplogroupService = null;
 
 try {
     console.log('\nLoading trees...');
-    console.log('Current working directory:', process.cwd());
-    console.log('Server directory:', __dirname);
+    console.log('Application root directory:', APP_ROOT);
     
-    const ftdnaPath = path.join(__dirname, '../data/get.json');
-    const yfullPath = path.join(__dirname, '../data/ytree.json');
+    const ftdnaPath = path.join(APP_ROOT, 'data', 'get.json');
+    const yfullPath = path.join(APP_ROOT, 'data', 'ytree.json');
     
     console.log('Loading FTDNA data from:', ftdnaPath);
     console.log('Loading YFull data from:', yfullPath);
@@ -54,37 +56,39 @@ try {
 }
 
 // CORS setup
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:3000', 'http://localhost:9002', 'http://localhost:5173', 'https://str.aadna.ru:8443'];
+const allowedOriginsStr = process.env.ALLOWED_ORIGINS || '';
+const allowedOrigins = allowedOriginsStr.split(',').filter(Boolean);
 
-// Middleware для обработки CORS
-app.use((req, res, next) => {
-    const origin = req.header("Origin");
-    if (allowedOrigins.includes(origin)) {
-        res.header("Access-Control-Allow-Origin", origin);
-        res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-        res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-        res.header("Access-Control-Allow-Credentials", "true");
-    }
+console.log('Allowed CORS origins:', allowedOrigins);
 
-    // Если это preflight-запрос (OPTIONS)
-    if (req.method === "OPTIONS") {
-        return res.status(204).end(); // Успешный ответ без тела
-    }
-
-    next();
-});
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like same-origin requests, mobile apps, or curl commands)
+        if (!origin) {
+            return callback(null, true);
+        }
+        // Allow if the origin is in our list
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        // Block all other cross-origin requests
+        return callback(new Error(`CORS policy does not allow access from the specified origin: ${origin}`));
+    },
+    credentials: true
+}));
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Routes
-app.get(`${API_PATH}/health`, (req, res) => {
+// Serve API routes
+const apiRouter = express.Router();
+
+// All API routes will be prefixed with API_PATH
+apiRouter.get(`/health`, (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.get(`${API_PATH}/search/:haplogroup`, async (req, res) => {
+apiRouter.get(`/search/:haplogroup`, async (req, res) => {
     try {
         if (!haplogroupService) {
             return res.status(503).json({
@@ -123,7 +127,7 @@ app.get(`${API_PATH}/search/:haplogroup`, async (req, res) => {
     }
 });
 
-app.get(`${API_PATH}/haplogroup-path/:haplogroup`, async (req, res) => {
+apiRouter.get(`/haplogroup-path/:haplogroup`, async (req, res) => {
     try {
         if (!haplogroupService) {
             return res.status(503).json({
@@ -162,7 +166,7 @@ app.get(`${API_PATH}/haplogroup-path/:haplogroup`, async (req, res) => {
     }
 });
 
-app.post(`${API_PATH}/check-subclade`, async (req, res) => {
+apiRouter.post(`/check-subclade`, async (req, res) => {
     try {
         if (!haplogroupService) {
             return res.status(503).json({
@@ -187,7 +191,7 @@ app.post(`${API_PATH}/check-subclade`, async (req, res) => {
 });
 
 // Batch API для проверки множественных субкладов
-app.post(`${API_PATH}/batch-check-subclades`, async (req, res) => {
+apiRouter.post(`/batch-check-subclades`, async (req, res) => {
     try {
         if (!haplogroupService) {
             return res.status(503).json({
@@ -240,7 +244,7 @@ app.post(`${API_PATH}/batch-check-subclades`, async (req, res) => {
     }
 });
 
-app.get(`${API_PATH}/autocomplete`, async (req, res) => {
+apiRouter.get(`/autocomplete`, async (req, res) => {
     const term = req.query.term;
     if (!term || term.length < 2) {
         return res.json([]);
@@ -292,8 +296,28 @@ app.get(`${API_PATH}/autocomplete`, async (req, res) => {
     }
 });
 
+app.use(API_PATH, apiRouter);
+
+// Serve static files from the React app
+const clientBuildPath = path.join(APP_ROOT, 'client', 'dist');
+app.use(express.static(clientBuildPath));
+
+// The "catchall" handler: for any request that doesn't match one above,
+// send back React's index.html file.
+app.get('*', (req, res) => {
+    // Ensure the path exists to avoid errors
+    const indexPath = path.join(clientBuildPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+    } else {
+        res.status(404).send('Client application not found. Please run a client build.');
+    }
+});
+
+
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`API available at ${API_PATH}`);
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`Serving API at ${API_PATH}`);
+    console.log(`Serving client from ${clientBuildPath}`);
 });
