@@ -3,7 +3,11 @@
 set -e
 
 # --- Configuration ---
-APP_DIR="/opt/DNA-utils-universal"
+REPO_URL="https://github.com/username/DNA-utils-universal"
+BRANCH="main"
+APP_DIR="$(dirname "$(realpath "$0")")"
+LOG_FILE="$APP_DIR/update.log"
+
 ENV_FILES=(
   ".env"
   ".env.production"
@@ -14,12 +18,44 @@ ENV_FILES=(
 )
 # --- End Configuration ---
 
+# Initialize logging
+exec > >(tee -a "$LOG_FILE") 2>&1
+echo "=== Обновление начато: $(date) ==="
+
+# --- Dependency checks ---
+check_dependency() {
+  if ! command -v "$1" &> /dev/null; then
+    echo "ОШИБКА: $1 не установлен!" | tee -a "$LOG_FILE"
+    exit 1
+  fi
+}
+
+echo "Проверяем зависимости..."
+check_dependency git
+check_dependency node
+check_dependency npm
+check_dependency pm2
+# --- End Dependency checks ---
+
 cd "$APP_DIR"
 
+# --- Repository setup ---
+if [ ! -d ".git" ]; then
+  echo "Клонируем репозиторий $REPO_URL..."
+  git clone "$REPO_URL" .
+  git checkout "$BRANCH"
+else
+  echo "Обновляем код из репозитория..."
+  git fetch origin
+  echo "Сбрасываем локальные изменения до состояния origin/$BRANCH..."
+  git reset --hard "origin/$BRANCH"
+  echo "Очищаем репозиторий от неотслеживаемых файлов..."
+  git clean -df
+fi
+# --- End Repository setup ---
+
 echo "Останавливаем PM2 демон и все процессы..."
-# This command stops the PM2 daemon itself. It's a robust way to ensure everything is stopped.
-# We add '|| true' to prevent the script from exiting if the daemon wasn't running.
-pm2 kill || true
+pm2 kill || echo "PM2 не был запущен, продолжаем..."
 
 # --- Backup .env files ---
 echo "Создаем резервные копии .env файлов..."
@@ -34,13 +70,6 @@ for env_file in "${ENV_FILES[@]}"; do
   fi
 done
 # --- End Backup ---
-
-echo "Обновляем код из репозитория..."
-git fetch origin
-echo "Сбрасываем локальные изменения до состояния origin/main..."
-git reset --hard origin/main
-echo "Очищаем репозиторий от неотслеживаемых файлов..."
-git clean -df
 
 # --- Restore .env files ---
 echo "Восстанавливаем .env файлы из резервной копии..."
@@ -69,4 +98,5 @@ echo "Проверяем статус сервисов через 5 секунд
 sleep 5
 pm2 list
 
-echo "Обновление успешно завершено! Не забудьте выполнить 'pm2 save', если это первая настройка."
+echo "=== Обновление успешно завершено: $(date) ==="
+echo "Лог сохранен в: $LOG_FILE"

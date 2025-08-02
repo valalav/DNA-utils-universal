@@ -234,4 +234,6 @@ const ProfilesManager = React.memo(({
   );
 });
 
+ProfilesManager.displayName = 'ProfilesManager';
+
 export default ProfilesManager;

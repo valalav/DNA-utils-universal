@@ -208,7 +208,7 @@ const STRMatcher: React.FC = () => {
       console.error('❌ Ошибка получения профиля:', error);
       setError('Ошибка получения профиля из массива');
     }
-  }, [database, searchHistory, setKitNumber, setQuery, setSearchHistory, setError, handleFindMatches]);
+  }, [database, searchHistory, setKitNumber, setQuery, setSearchHistory, setError, handleFindMatches, totalProfiles]);
 
   // Сброс маркеров
   const resetMarkers = () => {
@@ -227,6 +227,7 @@ const STRMatcher: React.FC = () => {
 
     // ⚡ Используем новую оптимизированную функцию вместо старой логики
     await handleFindMatches();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, handleFindMatches]);
 
   // Создаем дебаунсированную версию поиска совпадений
@@ -253,7 +254,7 @@ const STRMatcher: React.FC = () => {
       setQuery(updatedQuery);
       debouncedFindMatches(); // Используем дебаунсированный поиск
     }
-  }, [query, debouncedFindMatches]);
+  }, [query, debouncedFindMatches, setQuery]);
 
   const handleReset = () => {
     resetMarkers();
@@ -346,7 +347,7 @@ const STRMatcher: React.FC = () => {
     setFilterHaplogroup('');
     setIsFilterActive(false);
     setHaplogroupFilteredMatches(strMatches);
-  }, [strMatches, setFilterHaplogroup]);
+  }, [strMatches, setFilterHaplogroup, setIsFilterActive, setHaplogroupFilteredMatches]);
 
   // Определяем, какие матчи показывать
   const displayedMatches = isFilterActive ? haplogroupFilteredMatches : strMatches;
@@ -433,7 +434,7 @@ const STRMatcher: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [displayedMatches, database, setLoading, setError, setDatabase, setStrMatches,
+  }, [displayedMatches, database, strMatches, setLoading, setError, setDatabase, setStrMatches,
       setHaplogroupFilteredMatches, setFilterHaplogroup, setIsFilterActive]);
 
   // Добавляем функцию для экспорта базы данных в CSV

@@ -378,7 +378,8 @@ async function processMatchesWithCache(matches: Match[], filters: Filters): Prom
             // ⚡ ДЕЛАЕМ API ЗАПРОС только если нет в кэше
             try {
                 apiCalls++;
-                const response = await axios.post<{ isSubclade: boolean }>(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9003'}/api/check-subclade`, {
+                // Используем относительный путь - Next.js проксирует к API серверу
+                const response = await axios.post<{ isSubclade: boolean }>(`/api/check-subclade`, {
                     haplogroup: match.haplogroup,
                     parentHaplogroup: filterHaplo
                 });

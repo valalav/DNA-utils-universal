@@ -1,7 +1,6 @@
 "use client";
 
 import html2canvas from 'html2canvas';
-import { useTranslation } from '@/hooks/useTranslation';
 import type { STRMatch } from '@/utils/constants';
 
 interface ExportOptions {
@@ -9,8 +8,7 @@ interface ExportOptions {
  includeHaplogroups: boolean;
 }
 
-export const exportMatches = async (matches: STRMatch[], options: ExportOptions) => {
- const { t } = useTranslation();
+export const exportMatches = async (matches: STRMatch[], options: ExportOptions, t: (key: string) => string) => {
 
  if (options.format === 'csv') {
    const headers = [

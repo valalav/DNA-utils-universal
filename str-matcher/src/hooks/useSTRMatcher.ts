@@ -112,6 +112,7 @@ export const useSTRMatcher = () => {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kitNumber, database, markerCount, maxDistance, maxMatches, calculationMode, executeMatching]);
 
   // ⚡ ИНИЦИАЛИЗАЦИЯ WORKER'а

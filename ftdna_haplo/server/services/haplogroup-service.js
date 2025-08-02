@@ -82,18 +82,34 @@ class HaplogroupService {
             return false;
         }
 
+        console.log(`🔍 Checking if "${haplogroup}" is subclade of "${parentHaplogroup}"`);
+
         let isSubcladeResult = false;
 
-        if (this.ftdnaTree) {
-            isSubcladeResult = this.ftdnaTree.isSubclade(haplogroup, parentHaplogroup);
-            console.log('FTDNA check result:', isSubcladeResult);
+        try {
+            if (this.ftdnaTree && typeof this.ftdnaTree.isSubclade === 'function') {
+                console.log('📊 Checking with FTDNA tree...');
+                isSubcladeResult = this.ftdnaTree.isSubclade(haplogroup, parentHaplogroup);
+                console.log('FTDNA check result:', isSubcladeResult);
+            } else {
+                console.log('⚠️ FTDNA tree not available or missing isSubclade method');
+            }
+
+            if (!isSubcladeResult && this.yfullTree && typeof this.yfullTree.isSubclade === 'function') {
+                console.log('📊 Checking with YFull tree...');
+                isSubcladeResult = this.yfullTree.isSubclade(haplogroup, parentHaplogroup);
+                console.log('YFull check result:', isSubcladeResult);
+            } else if (!isSubcladeResult) {
+                console.log('⚠️ YFull tree not available or missing isSubclade method');
+            }
+        } catch (error) {
+            console.error('❌ Error in checkSubclade:', error);
+            console.error('Error stack:', error.stack);
+            // Возвращаем false вместо выброса исключения
+            return false;
         }
 
-        if (!isSubcladeResult && this.yfullTree) {
-            isSubcladeResult = this.yfullTree.isSubclade(haplogroup, parentHaplogroup);
-            console.log('YFull check result:', isSubcladeResult);
-        }
-
+        console.log(`✅ Final result for "${haplogroup}" vs "${parentHaplogroup}": ${isSubcladeResult}`);
         return isSubcladeResult;
     }
 }

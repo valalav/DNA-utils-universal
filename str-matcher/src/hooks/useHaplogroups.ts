@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9003';
+// Используем относительный путь для проксирования через Next.js
+// const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9003';
 
 export const useHaplogroups = () => {
     const [filterHaplogroup, setFilterHaplogroup] = useState<string>('');
@@ -29,7 +30,8 @@ export const useHaplogroups = () => {
             }
 
             try {
-                const response = await axios.post(`${API_URL}/api/check-subclade`, {
+                // Используем относительный путь - Next.js проксирует к API серверу
+                const response = await axios.post(`/api/check-subclade`, {
                     haplogroup,
                     parentHaplogroup: filterHaplogroup
                 });

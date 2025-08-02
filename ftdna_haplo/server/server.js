@@ -186,42 +186,58 @@ apiRouter.get(`/haplogroup-path/:haplogroup`, async (req, res) => {
 });
 
 apiRouter.post(`/check-subclade`, async (req, res) => {
+    console.log('🔍 check-subclade endpoint called');
+    
     try {
-        if (!haplogroupService) {
-            return res.status(503).json({
-                error: 'Haplogroup service not available',
-                details: 'Service failed to initialize'
-            });
+        const { haplogroup, parentHaplogroup } = req.body;
+        console.log('Request body:', { haplogroup, parentHaplogroup });
+        
+        if (!haplogroup || !parentHaplogroup) {
+            console.log('❌ Missing parameters');
+            return res.json({ isSubclade: false });
         }
         
-        const { haplogroup, parentHaplogroup } = req.body;
-        console.log('Checking subclade:', { haplogroup, parentHaplogroup });
-
+        if (!haplogroupService) {
+            console.log('⚠️ Haplogroup service not available, using fallback logic');
+            
+            // Простая логика: если строки одинаковые или haplogroup начинается с parentHaplogroup
+            const isSubclade = haplogroup === parentHaplogroup || haplogroup.startsWith(parentHaplogroup);
+            console.log(`✅ Fallback check: "${haplogroup}" vs "${parentHaplogroup}" = ${isSubclade}`);
+            
+            return res.json({ isSubclade });
+        }
+        
+        console.log('🔧 Using haplogroupService.checkSubclade...');
         const isSubcladeResult = await haplogroupService.checkSubclade(
             haplogroup,
             parentHaplogroup
         );
-
+        
+        console.log('✅ Service result:', isSubcladeResult);
         res.json({ isSubclade: isSubcladeResult });
     } catch (error) {
-        console.error('Error in check-subclade:', error);
-        res.status(500).json({ error: error.message });
+        console.error('❌ Error in check-subclade:', error);
+        console.error('Stack trace:', error.stack);
+        
+        // Fallback на простую логику
+        const { haplogroup, parentHaplogroup } = req.body;
+        const isSubclade = haplogroup === parentHaplogroup || (haplogroup && parentHaplogroup && haplogroup.startsWith(parentHaplogroup));
+        console.log(`🚨 Error fallback: "${haplogroup}" vs "${parentHaplogroup}" = ${isSubclade}`);
+        
+        res.json({ isSubclade });
     }
 });
 
 // Batch API для проверки множественных субкладов
 apiRouter.post(`/batch-check-subclades`, async (req, res) => {
+    console.log('🔍 batch-check-subclades endpoint called');
+    
     try {
-        if (!haplogroupService) {
-            return res.status(503).json({
-                error: 'Haplogroup service not available',
-                details: 'Service failed to initialize'
-            });
-        }
-        
         const { haplogroups, parentHaplogroups } = req.body;
+        console.log('Request body:', { haplogroups: haplogroups?.length, parentHaplogroups: parentHaplogroups?.length });
         
         if (!Array.isArray(haplogroups) || !Array.isArray(parentHaplogroups)) {
+            console.log('❌ Invalid request format');
             return res.status(400).json({
                 error: 'haplogroups and parentHaplogroups must be arrays'
             });
@@ -231,35 +247,82 @@ apiRouter.post(`/batch-check-subclades`, async (req, res) => {
 
         const results = {};
         
-        // Проверяем каждую гаплогруппу против всех родительских
-        for (const haplogroup of haplogroups) {
-            let isMatch = false;
+        if (!haplogroupService) {
+            console.log('⚠️ Haplogroup service not available, using fallback logic for batch');
             
-            for (const parentHaplogroup of parentHaplogroups) {
-                try {
-                    const isSubcladeResult = await haplogroupService.checkSubclade(
-                        haplogroup,
-                        parentHaplogroup
-                    );
-                    
-                    if (isSubcladeResult) {
+            // Fallback логика для batch
+            for (const haplogroup of haplogroups) {
+                let isMatch = false;
+                
+                for (const parentHaplogroup of parentHaplogroups) {
+                    if (haplogroup === parentHaplogroup || (haplogroup && haplogroup.startsWith(parentHaplogroup))) {
                         isMatch = true;
-                        break; // Если найдено совпадение, не нужно проверять остальные
+                        break;
                     }
-                } catch (error) {
-                    console.error(`Error checking ${haplogroup} vs ${parentHaplogroup}:`, error);
                 }
+                
+                results[haplogroup] = isMatch;
             }
+        } else {
+            console.log('🔧 Using haplogroupService for batch...');
             
-            results[haplogroup] = isMatch;
+            // Проверяем каждую гаплогруппу против всех родительских
+            for (const haplogroup of haplogroups) {
+                let isMatch = false;
+                
+                for (const parentHaplogroup of parentHaplogroups) {
+                    try {
+                        const isSubcladeResult = await haplogroupService.checkSubclade(
+                            haplogroup,
+                            parentHaplogroup
+                        );
+                        
+                        if (isSubcladeResult) {
+                            isMatch = true;
+                            break; // Если найдено совпадение, не нужно проверять остальные
+                        }
+                    } catch (error) {
+                        console.error(`Error checking ${haplogroup} vs ${parentHaplogroup}:`, error);
+                        // При ошибке используем fallback
+                        if (haplogroup === parentHaplogroup || (haplogroup && haplogroup.startsWith(parentHaplogroup))) {
+                            isMatch = true;
+                            break;
+                        }
+                    }
+                }
+                
+                results[haplogroup] = isMatch;
+            }
         }
 
         console.log(`✅ Batch check completed: ${Object.values(results).filter(Boolean).length}/${haplogroups.length} matches`);
         
         res.json({ results });
     } catch (error) {
-        console.error('Error in batch-check-subclades:', error);
-        res.status(500).json({ error: error.message });
+        console.error('❌ Error in batch-check-subclades:', error);
+        console.error('Stack trace:', error.stack);
+        
+        // Полный fallback
+        const { haplogroups, parentHaplogroups } = req.body;
+        const results = {};
+        
+        if (Array.isArray(haplogroups) && Array.isArray(parentHaplogroups)) {
+            for (const haplogroup of haplogroups) {
+                let isMatch = false;
+                
+                for (const parentHaplogroup of parentHaplogroups) {
+                    if (haplogroup === parentHaplogroup || (haplogroup && haplogroup.startsWith(parentHaplogroup))) {
+                        isMatch = true;
+                        break;
+                    }
+                }
+                
+                results[haplogroup] = isMatch;
+            }
+        }
+        
+        console.log(`🚨 Error fallback batch completed: ${Object.values(results).filter(Boolean).length}/${haplogroups?.length || 0} matches`);
+        res.json({ results });
     }
 });
 

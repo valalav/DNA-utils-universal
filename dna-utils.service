@@ -1,0 +1,17 @@
+[Unit]
+Description=DNA Utils Universal Applications
+After=network.target
+
+[Service]
+Type=forking
+User=root
+WorkingDirectory=/opt/DNA-utils-universal
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/npm start
+ExecStop=/usr/bin/pm2 delete all
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
