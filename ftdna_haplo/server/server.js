@@ -16,18 +16,41 @@ let haplogroupService = null;
 
 try {
     console.log('\nLoading trees...');
-    const ftdnaData = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/get.json'), 'utf8'));
-    const yfullData = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/ytree.json'), 'utf8'));
+    console.log('Current working directory:', process.cwd());
+    console.log('Server directory:', __dirname);
+    
+    const ftdnaPath = path.join(__dirname, '../data/get.json');
+    const yfullPath = path.join(__dirname, '../data/ytree.json');
+    
+    console.log('Loading FTDNA data from:', ftdnaPath);
+    console.log('Loading YFull data from:', yfullPath);
+    
+    // Проверяем существование файлов
+    if (!fs.existsSync(ftdnaPath)) {
+        throw new Error(`FTDNA data file not found: ${ftdnaPath}`);
+    }
+    if (!fs.existsSync(yfullPath)) {
+        throw new Error(`YFull data file not found: ${yfullPath}`);
+    }
+    
+    const ftdnaData = JSON.parse(fs.readFileSync(ftdnaPath, 'utf8'));
+    const yfullData = JSON.parse(fs.readFileSync(yfullPath, 'utf8'));
+    
+    console.log('Data files loaded, initializing services...');
     
     const ftdnaTree = new HaploTree(ftdnaData);
     const yfullTree = new YFullAdapter(yfullData);
     const searchIntegrator = new SearchIntegrator(ftdnaTree, yfullTree);
     
     haplogroupService = new HaplogroupService(ftdnaTree, yfullTree, searchIntegrator);
-    console.log('Trees loaded successfully');
+    console.log('✅ Trees loaded successfully');
 } catch (error) {
-    console.error('Error loading trees:', error);
-    process.exit(1);
+    console.error('❌ Error loading trees:', error.message);
+    console.error('Stack trace:', error.stack);
+    
+    // Не завершаем процесс, а создаем заглушку сервиса
+    console.log('⚠️  Starting server without haplogroup service...');
+    haplogroupService = null;
 }
 
 // CORS setup
@@ -63,6 +86,13 @@ app.get(`${API_PATH}/health`, (req, res) => {
 
 app.get(`${API_PATH}/search/:haplogroup`, async (req, res) => {
     try {
+        if (!haplogroupService) {
+            return res.status(503).json({
+                error: 'Haplogroup service not available',
+                details: 'Service failed to initialize'
+            });
+        }
+        
         const result = await haplogroupService.searchHaplogroup(req.params.haplogroup);
         
         console.log('Search result:', {
@@ -95,6 +125,13 @@ app.get(`${API_PATH}/search/:haplogroup`, async (req, res) => {
 
 app.get(`${API_PATH}/haplogroup-path/:haplogroup`, async (req, res) => {
     try {
+        if (!haplogroupService) {
+            return res.status(503).json({
+                error: 'Haplogroup service not available',
+                details: 'Service failed to initialize'
+            });
+        }
+        
         const result = await haplogroupService.searchHaplogroup(req.params.haplogroup);
         
         console.log('Search result:', {
@@ -127,6 +164,13 @@ app.get(`${API_PATH}/haplogroup-path/:haplogroup`, async (req, res) => {
 
 app.post(`${API_PATH}/check-subclade`, async (req, res) => {
     try {
+        if (!haplogroupService) {
+            return res.status(503).json({
+                error: 'Haplogroup service not available',
+                details: 'Service failed to initialize'
+            });
+        }
+        
         const { haplogroup, parentHaplogroup } = req.body;
         console.log('Checking subclade:', { haplogroup, parentHaplogroup });
 
@@ -145,6 +189,13 @@ app.post(`${API_PATH}/check-subclade`, async (req, res) => {
 // Batch API для проверки множественных субкладов
 app.post(`${API_PATH}/batch-check-subclades`, async (req, res) => {
     try {
+        if (!haplogroupService) {
+            return res.status(503).json({
+                error: 'Haplogroup service not available',
+                details: 'Service failed to initialize'
+            });
+        }
+        
         const { haplogroups, parentHaplogroups } = req.body;
         
         if (!Array.isArray(haplogroups) || !Array.isArray(parentHaplogroups)) {
@@ -196,6 +247,13 @@ app.get(`${API_PATH}/autocomplete`, async (req, res) => {
     }
 
     try {
+        if (!haplogroupService) {
+            return res.status(503).json({
+                error: 'Haplogroup service not available',
+                details: 'Service failed to initialize'
+            });
+        }
+        
         const ftdnaResults = haplogroupService.ftdnaTree.searchWithAutocomplete(term);
         const yfullResults = haplogroupService.yfullTree.searchWithAutocomplete(term);
 
