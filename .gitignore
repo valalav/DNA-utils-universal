@@ -177,8 +177,12 @@ celerybeat.pid
 # Data files (customize as needed)
 *.csv
 # Игнорируем JSON файлы, но с исключениями для важных данных и конфигураций
-# *.json
-#!/ftdna_haplo/data/*.json
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!*config*.json
+!ftdna_haplo/data/*config*.json
 *.xlsx
 *.xls
 !package.json
@@ -237,4 +241,4 @@ pnpm-lock.yaml
 # training_data/
 
 # Ignore large data files
-ftdna_haplo/data/get.json
+# ftdna_haplo/data/get.json is now tracked by Git LFS
