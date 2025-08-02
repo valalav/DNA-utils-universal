@@ -23,9 +23,14 @@ let haplogroupService = null;
 try {
     console.log('\nLoading trees...');
     console.log('Application root directory:', APP_ROOT);
+
+    const dataDir = path.join(APP_ROOT, 'data');
+    if (!fs.existsSync(dataDir)) {
+        throw new Error(`Data directory not found: ${dataDir}. Please ensure the 'data' directory with 'get.json' and 'ytree.json' exists.`);
+    }
     
-    const ftdnaPath = path.join(APP_ROOT, 'data', 'get.json');
-    const yfullPath = path.join(APP_ROOT, 'data', 'ytree.json');
+    const ftdnaPath = path.join(dataDir, 'get.json');
+    const yfullPath = path.join(dataDir, 'ytree.json');
     
     console.log('Loading FTDNA data from:', ftdnaPath);
     console.log('Loading YFull data from:', yfullPath);
