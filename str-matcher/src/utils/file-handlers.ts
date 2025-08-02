@@ -1,6 +1,17 @@
 import { logger } from './logger';
 import { notifications } from './notifications';
-import { i18n } from './i18n';
+// import { i18n } from './i18n'; // ⚠️ Модуль не найден, временно отключен
+
+// ⚡ УЛУЧШЕННАЯ ЗАГЛУШКА для i18n до его реализации
+const i18n = {
+  t: (key: string, options?: any) => {
+    if (typeof options === 'string') return options;
+    if (options && typeof options === 'object' && 'default' in options) {
+      return options.default || key;
+    }
+    return key;
+  }
+};
 import Papa from 'papaparse';
 import XLSX from 'xlsx';
 import type { STRProfile } from './constants';

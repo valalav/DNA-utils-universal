@@ -1,0 +1,45 @@
+import { useState, useEffect, useCallback } from 'react';
+import type { STRProfile, STRMatch, HistoryItem, MarkerCount } from '@/utils/constants';
+import type { CalculationMode } from '@/utils/calculations';
+import { dbManager } from '@/utils/storage/indexedDB';
+import { useWorker } from '@/hooks/useWorker';
+import { markerOperations } from '@/utils/markerOperations';
+
+const CALCULATION_MODE_KEY = 'str_matcher_calculation_mode';
+
+export const useSTRMatcher = () => {
+  // ⚡ УБРАЛ database из state! Больше не храним 150k профилей в памяти
+  // const [database, setDatabase] = useState<STRProfile[]>([]);  // ❌ УДАЛЕНО
+  
+  const [query, setQuery] = useState<STRProfile | null>(null);
+  const [matches, setMatches] = useState<STRMatch[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [kitNumber, setKitNumber] = useState('');
+  const [searchHistory, setSearchHistory] = useState<HistoryItem[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  // ⚡ НОВЫЕ СОСТОЯНИЯ для прогресса обработки
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const [processedCount, setProcessedCount] = useState(0);
+  const [foundCount, setFoundCount] = useState(0);
+  const [totalProfiles, setTotalProfiles] = useState(0);
+
+  // Состояния для настроек поиска
+  const [markerCount, setMarkerCount] = useState<MarkerCount>(37);
+  const [maxDistance, setMaxDistance] = useState(25);
+  const [maxMatches, setMaxMatches] = useState(200);
+  const [markerSortOrder, setMarkerSortOrder] = useState<'default' | 'mutation_rate'>('mutation_rate');
+
+  // Инициализируем calculationMode из localStorage
+  const [calculationMode, setCalculationMode] = useState<CalculationMode>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(CALCULATION_MODE_KEY);
+      return saved ? JSON.parse(saved) : { type: 'standard' };
+    }
+    return { type: 'standard' };
+  });
+
+  // Сохраняем режим расчета при изменении
+  useEffect(() => {
+    localStorage.setItem(CALCULATION_MODE_KEY, JSON.stringify(calculationMode));
+  }, [calculationMode]);

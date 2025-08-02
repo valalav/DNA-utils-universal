@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 
-const API_URL = '/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9003/api';
 
 export const useHaplogroups = () => {
     const [filterHaplogroup, setFilterHaplogroup] = useState<string>('');

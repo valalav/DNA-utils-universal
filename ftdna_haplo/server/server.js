@@ -31,9 +31,9 @@ try {
 }
 
 // CORS setup
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',') 
-  : ['http://localhost:9002', 'http://localhost:5173', 'https://str.aadna.ru:8443'];
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['http://localhost:3000', 'http://localhost:9002', 'http://localhost:5173', 'https://str.aadna.ru:8443'];
 
 // Middleware для обработки CORS
 app.use((req, res, next) => {
@@ -138,6 +138,53 @@ app.post(`${API_PATH}/check-subclade`, async (req, res) => {
         res.json({ isSubclade: isSubcladeResult });
     } catch (error) {
         console.error('Error in check-subclade:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Batch API для проверки множественных субкладов
+app.post(`${API_PATH}/batch-check-subclades`, async (req, res) => {
+    try {
+        const { haplogroups, parentHaplogroups } = req.body;
+        
+        if (!Array.isArray(haplogroups) || !Array.isArray(parentHaplogroups)) {
+            return res.status(400).json({
+                error: 'haplogroups and parentHaplogroups must be arrays'
+            });
+        }
+
+        console.log(`🚀 Batch checking ${haplogroups.length} haplogroups against ${parentHaplogroups.length} parents`);
+
+        const results = {};
+        
+        // Проверяем каждую гаплогруппу против всех родительских
+        for (const haplogroup of haplogroups) {
+            let isMatch = false;
+            
+            for (const parentHaplogroup of parentHaplogroups) {
+                try {
+                    const isSubcladeResult = await haplogroupService.checkSubclade(
+                        haplogroup,
+                        parentHaplogroup
+                    );
+                    
+                    if (isSubcladeResult) {
+                        isMatch = true;
+                        break; // Если найдено совпадение, не нужно проверять остальные
+                    }
+                } catch (error) {
+                    console.error(`Error checking ${haplogroup} vs ${parentHaplogroup}:`, error);
+                }
+            }
+            
+            results[haplogroup] = isMatch;
+        }
+
+        console.log(`✅ Batch check completed: ${Object.values(results).filter(Boolean).length}/${haplogroups.length} matches`);
+        
+        res.json({ results });
+    } catch (error) {
+        console.error('Error in batch-check-subclades:', error);
         res.status(500).json({ error: error.message });
     }
 });

@@ -2,8 +2,7 @@
 
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Collapsible } from '@/components/ui/collapsible'; 
-import { dbManager } from '@/utils/storage/indexedDB';
+import { Collapsible } from '@/components/ui/collapsible';
 import { AppHeader } from '@/components/layout/AppHeader';
 import STRMarkerGrid from './STRMarkerGrid';
 import MatchesTable from './MatchesTable';
@@ -13,7 +12,7 @@ import DatabaseInput from './DatabaseInput';
 import { useSTRMatcher } from '@/hooks/useSTRMatcher';
 import { markerOperations } from '@/utils/markerOperations';
 import { SearchSettings } from './SearchSettings';
-import type { STRMatch } from '@/utils/constants';
+import type { STRMatch, STRProfile } from '@/utils/constants';
 import type { HaplogroupFilterState } from '@/types/haplogroup';
 import { useHaplogroups } from '@/hooks/useHaplogroups';
 import { HaplogroupFilter } from './HaplogroupFilter';
@@ -37,10 +36,17 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 const STRMatcher: React.FC = () => {
   const { t } = useTranslation();
   
-  // Состояния из useSTRMatcher
+  // 🔄 УПРОЩЕННЫЕ состояния из useSTRMatcher
   const {
-    database,
+    database, // 🔄 Простой массив в памяти
+    totalProfiles, // 🔄 Вычисляется из database.length
+    processingProgress, // ⚡ Прогресс обработки
+    processedCount, // ⚡ Количество обработанных
+    foundCount, // ⚡ Количество найденных
+    currentBatch, // ⚡ Текущий batch
+    totalBatches, // ⚡ Общее количество batch'ей
     setDatabase,
+    mergeDatabase, // 🔄 НОВАЯ ФУНКЦИЯ для накопительной загрузки
     query,
     setQuery,
     matches: strMatches, // переименовываем для избежания конфликта
@@ -73,65 +79,11 @@ const STRMatcher: React.FC = () => {
     }
   }, [kitNumber, setKitNumber]);
 
-  // Состояния для фильтрации гаплогрупп
-  const [matchesWithHaplogroups, setMatchesWithHaplogroups] = useState<STRMatch[]>([]);
-  const [filteredByHaplogroup, setFilteredByHaplogroup] = useState<STRMatch[]>([]);
-  
-  // Состояния для нового механизма фильтрации
-  const [filters, setFilters] = useState<Filters>({
-    haplogroups: [],
-    maxDistance: 0,
-    minMarkers: 0,
-    includeSubclades: true
-  });
-
-  // Добавляем состояние для фильтра гаплогрупп
-  const [haplogroupFilter, setHaplogroupFilter] = useState<HaplogroupFilterState>({
-    includeGroups: [],
-    excludeGroups: [],
-    includeSubclades: true
-  });
+  // Упрощенные состояния для фильтрации гаплогрупп
+  const [haplogroupFilteredMatches, setHaplogroupFilteredMatches] = useState<STRMatch[]>([]);
 
   // Добавляем состояние для скрытых маркеров
   const [hiddenMarkers, setHiddenMarkers] = useState<Set<string>>(new Set());
-
-  // Функция применения фильтров с конвертацией типов
-  const applyFilters = useCallback(async () => {
-    if (!strMatches.length) return;
-
-    setLoading(true);
-    try {
-      // Конвертируем STRMatch в Match
-      const matchesForFilter: Match[] = strMatches.map(match => ({
-        id: match.profile.kitNumber,
-        name: match.profile.name || '',
-        haplogroup: match.profile.haplogroup,
-        markers: match.profile.markers,
-        distance: match.distance,
-        comparedMarkers: match.comparedMarkers,
-        identicalMarkers: match.identicalMarkers,
-        percentIdentical: match.percentIdentical
-      }));
-
-      const filtered = await processMatches(matchesForFilter, filters);
-      
-      // Конвертируем обратно в STRMatch
-      const filteredSTRMatches = strMatches.filter(match => 
-        filtered.some(f => f.id === match.profile.kitNumber)
-      );
-      
-      setFilteredByHaplogroup(filteredSTRMatches);
-    } catch (error) {
-      console.error('Error applying filters:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [strMatches, filters, setLoading]);
-
-  // Применяем фильтры при изменении matches или filters
-  useEffect(() => {
-    applyFilters();
-  }, [applyFilters]);
 
   const {
     filterHaplogroup,
@@ -146,37 +98,22 @@ const STRMatcher: React.FC = () => {
   // Добавим состояние для отслеживания активности фильтра
   const [isFilterActive, setIsFilterActive] = useState(false);
 
-  // Загрузка сохраненных профилей при инициализации
-  useEffect(() => {
-    const loadSavedProfiles = async () => {
-      try {
-        await dbManager.init();
-        const savedProfiles = await dbManager.getProfiles();
-        console.log('Loaded profiles:', {
-          count: savedProfiles.length,
-          sample: savedProfiles[0]
-        });
-        if (savedProfiles.length > 0) {
-          setDatabase(savedProfiles);
-        }
-      } catch (error) {
-        console.error('Error loading saved profiles:', error);
-        setError('Failed to load saved profiles');
-      }
-    };
-    loadSavedProfiles();
-  }, [setError, setDatabase]);
+  // 🔄 УПРОЩЕНИЕ: Убираем автозагрузку сохраненных профилей
+  // База данных теперь пустая при запуске - пользователь загружает CSV файлы вручную
 
-  // Удаление совпадения
-  const handleRemoveMatch = useCallback((matchKitNumber: string) => {
-    // Удаляем из базы данных
-    setDatabase(prev => prev.filter(p => p.kitNumber !== matchKitNumber));
-    
-    // Удаляем из всех наборов матчей
-    setStrMatches(prev => prev.filter(m => m.profile.kitNumber !== matchKitNumber));
-    setMatchesWithHaplogroups(prev => prev.filter(m => m.profile.kitNumber !== matchKitNumber));
-    setFilteredByHaplogroup(prev => prev.filter(m => m.profile.kitNumber !== matchKitNumber));
-  }, [setDatabase, setStrMatches, setMatchesWithHaplogroups, setFilteredByHaplogroup]);
+  // 🔄 УПРОЩЕННОЕ удаление совпадения
+  const handleRemoveMatch = useCallback(async (matchKitNumber: string) => {
+    try {
+      // 🔄 Удаляем из массива в памяти и из матчей
+      setDatabase(prev => prev.filter(p => p.kitNumber !== matchKitNumber));
+      setStrMatches(prev => prev.filter(m => m.profile.kitNumber !== matchKitNumber));
+      setHaplogroupFilteredMatches(prev => prev.filter(m => m.profile.kitNumber !== matchKitNumber));
+      
+      console.log(`🗑️ Профиль ${matchKitNumber} удален из базы и результатов`);
+    } catch (error) {
+      console.error('❌ Ошибка удаления профиля:', error);
+    }
+  }, [setDatabase, setStrMatches, setHaplogroupFilteredMatches]);
 
   // Обновляем функцию handleRemoveMarker
   const handleRemoveMarker = useCallback((marker: string) => {
@@ -227,31 +164,37 @@ const STRMatcher: React.FC = () => {
   ]);
 
   // Обновляем функцию populateFromKitNumber
-  const populateFromKitNumber = useCallback((selectedKitNumber: string) => {
-    if (!selectedKitNumber || !database.length) return;
+  // 🔄 УПРОЩЕННАЯ функция populateFromKitNumber
+  const populateFromKitNumber = useCallback(async (selectedKitNumber: string) => {
+    if (!selectedKitNumber || !totalProfiles) return;
 
-    const selectedProfile = database.find(profile => profile.kitNumber === selectedKitNumber);
-    if (!selectedProfile) return;
+    try {
+      // 🔄 УПРОЩЕНИЕ: ищем профиль в массиве, а не в IndexedDB
+      const selectedProfile = database.find(profile => profile.kitNumber === selectedKitNumber);
+      if (!selectedProfile) {
+        console.warn(`Профиль ${selectedKitNumber} не найден в базе`);
+        return;
+      }
 
-    setKitNumber(selectedKitNumber);
-    
-    // Очищаем список скрытых маркеров при заполнении
-    setHiddenMarkers(new Set());
-    
-    // Создаем полный профиль со всеми маркерами
-    const fullProfile = {
-      ...selectedProfile,
-      markers: { ...selectedProfile.markers }
-    };
-    
-    setQuery(fullProfile);
+      setKitNumber(selectedKitNumber);
+      
+      // Очищаем список скрытых маркеров при заполнении
+      setHiddenMarkers(new Set());
+      
+      // Создаем полный профиль со всеми маркерами
+      const fullProfile = {
+        ...selectedProfile,
+        markers: { ...selectedProfile.markers }
+      };
+      
+      setQuery(fullProfile);
 
-    if (!searchHistory.some(item => item.kitNumber === selectedKitNumber)) {
-      setSearchHistory(prev => [{
-        kitNumber: selectedProfile.kitNumber,
-        name: selectedProfile.name,
-        haplogroup: selectedProfile.haplogroup,
-        markers: selectedProfile.markers,
+      if (!searchHistory.some(item => item.kitNumber === selectedKitNumber)) {
+        setSearchHistory(prev => [{
+          kitNumber: selectedProfile.kitNumber,
+          name: selectedProfile.name,
+          haplogroup: selectedProfile.haplogroup,
+          markers: selectedProfile.markers,
         timestamp: new Date()
       }, ...prev].slice(0, 10));
     }
@@ -261,7 +204,11 @@ const STRMatcher: React.FC = () => {
     }, 100);
     
     markerOperations.populateMarkerInputs(fullProfile);
-  }, [database, searchHistory, setKitNumber, setQuery, setSearchHistory, handleFindMatches]);
+    } catch (error) {
+      console.error('❌ Ошибка получения профиля:', error);
+      setError('Ошибка получения профиля из массива');
+    }
+  }, [database, searchHistory, setKitNumber, setQuery, setSearchHistory, setError, handleFindMatches]);
 
   // Сброс маркеров
   const resetMarkers = () => {
@@ -271,72 +218,25 @@ const STRMatcher: React.FC = () => {
     setKitNumber('');
   };
 
-  // Основная функция поиска совпадений
+  // ⚡ ОБНОВЛЕННАЯ функция поиска - использует оптимизированный handleFindMatches
   const handleSearch = useCallback(async () => {
     if (!query || Object.keys(query.markers).length === 0) {
       setStrMatches([]); // Очищаем результаты если нет маркеров
       return;
     }
 
-    setLoading(true);
-    setError(null);
-    
-    try {
-      if (!kitNumber || !database.length) return;
-
-      const currentProfile = database.find(p => p.kitNumber === kitNumber);
-      if (!currentProfile) return;
-
-      // Вычисляем совпадения
-      const matches = database
-        .filter(profile => profile.kitNumber !== currentProfile.kitNumber)
-        .map(profile => {
-          const result = calculateGeneticDistance(
-            currentProfile.markers,
-            profile.markers,
-            markerCount,
-            calculationMode
-          );
-
-          return {
-            profile,
-            ...result
-          };
-        })
-        .filter(match => 
-          match.hasAllRequiredMarkers && // Проверяем наличие необходимых маркеров
-          match.distance <= maxDistance
-        )
-        .sort((a, b) => a.distance - b.distance)
-        .slice(0, maxMatches);
-
-      setStrMatches(matches);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Unknown error');
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    query,
-    kitNumber,
-    database,
-    markerCount,
-    maxDistance,
-    maxMatches,
-    calculationMode,
-    setStrMatches,
-    setLoading,
-    setError
-  ]);
+    // ⚡ Используем новую оптимизированную функцию вместо старой логики
+    await handleFindMatches();
+  }, [query, handleFindMatches]);
 
   // Создаем дебаунсированную версию поиска совпадений
   const debouncedFindMatches = useMemo(
     () => debounce(() => {
       if (query && Object.keys(query.markers).length > 0) {
-        handleSearch();
+        handleFindMatches();
       }
     }, 300),
-    [query, handleSearch]
+    [query, handleFindMatches]
   );
 
   // Очистка таймера дебаунса при размонтировании
@@ -353,7 +253,7 @@ const STRMatcher: React.FC = () => {
       setQuery(updatedQuery);
       debouncedFindMatches(); // Используем дебаунсированный поиск
     }
-  }, [query, setQuery, debouncedFindMatches]);
+  }, [query, debouncedFindMatches]);
 
   const handleReset = () => {
     resetMarkers();
@@ -370,88 +270,95 @@ const STRMatcher: React.FC = () => {
     setError(null);
   };
 
-  // Мемоизируем базово отфильтрованные матчи
-  const filteredMatches = useMemo(() => {
-    if (!isFilterActive || !filterHaplogroup || !strMatches) return strMatches || [];
-    
-    return strMatches.filter(match => {
-        const haplogroup = match.profile?.haplogroup;
-        if (!haplogroup) {
-            return showEmptyHaplogroups;
-        }
-        return haplogroup === filterHaplogroup;
-    });
-  }, [strMatches, filterHaplogroup, showEmptyHaplogroups, isFilterActive]);
+  // 🔄 УПРОЩЕННАЯ ОПТИМИЗИРОВАННАЯ логика фильтрации гаплогрупп
+  const handleApplyFilter = useCallback(async () => {
+    if (!filterHaplogroup || !strMatches.length) {
+      setIsFilterActive(false);
+      setHaplogroupFilteredMatches(strMatches);
+      return;
+    }
 
-  // Обновляем дебаунс для проверки гаплогрупп
-  const debouncedCheckHaplogroup = useMemo(
-    () => debounce(async (matches: STRMatch[]) => {
-        // Если фильтр не активен или нет значения фильтра, показываем все матчи
-        if (!isFilterActive || !filterHaplogroup || !matches) {
-            setMatchesWithHaplogroups(matches || []);
-            return;
-        }
+    setIsFilterActive(true);
+    setLoading(true);
 
-        // Создаем массив уникальных гаплогрупп, исключая undefined
+    try {
+      if (includeSubclades) {
+        // Используем оптимизированный batch API для проверки субкладов
         const uniqueHaplogroups = Array.from(new Set(
-            matches
-                .map(match => match.profile?.haplogroup)
-                .filter((haplogroup): haplogroup is string => Boolean(haplogroup))
+          strMatches
+            .map(match => match.profile?.haplogroup)
+            .filter((haplogroup): haplogroup is string => Boolean(haplogroup))
         ));
 
-        const results = new Map<string, boolean>();
-        for (const haplogroup of uniqueHaplogroups) {
-            const isMatch = await checkHaplogroupMatch(haplogroup);
-            results.set(haplogroup, isMatch);
+        if (uniqueHaplogroups.length === 0) {
+          setHaplogroupFilteredMatches(showEmptyHaplogroups ? strMatches : []);
+          return;
         }
 
-        const filtered = matches.filter(match => {
-            const haplogroup = match.profile?.haplogroup;
-            
-            // Если гаплогруппа пустая
-            if (!haplogroup) {
-                return showEmptyHaplogroups;
-            }
-            
-            return results.get(haplogroup);
+        // Конвертируем в формат для batch API
+        const matchesForFilter: Match[] = strMatches.map(match => ({
+          id: match.profile.kitNumber,
+          name: match.profile.name || '',
+          haplogroup: match.profile.haplogroup,
+          markers: match.profile.markers,
+          distance: match.distance,
+          comparedMarkers: match.comparedMarkers,
+          identicalMarkers: match.identicalMarkers,
+          percentIdentical: match.percentIdentical
+        }));
+
+        const filters: Filters = {
+          haplogroups: [filterHaplogroup],
+          includeSubclades: true
+        };
+
+        const filtered = await processMatches(matchesForFilter, filters);
+        
+        // Конвертируем обратно в STRMatch
+        const filteredSTRMatches = strMatches.filter(match =>
+          filtered.some(f => f.id === match.profile.kitNumber) ||
+          (!match.profile.haplogroup && showEmptyHaplogroups)
+        );
+        
+        setHaplogroupFilteredMatches(filteredSTRMatches);
+      } else {
+        // Простая фильтрация без субкладов
+        const filtered = strMatches.filter(match => {
+          const haplogroup = match.profile?.haplogroup;
+          if (!haplogroup) {
+            return showEmptyHaplogroups;
+          }
+          return haplogroup === filterHaplogroup;
         });
-
-        setMatchesWithHaplogroups(filtered);
-    }, 300),
-    [filterHaplogroup, includeSubclades, checkHaplogroupMatch, showEmptyHaplogroups, isFilterActive]
-  );
-
-  // Обновляем функцию применения фильтра
-  const handleApplyFilter = useCallback(() => {
-    // Активируем фильтр только если есть значение фильтра
-    setIsFilterActive(Boolean(filterHaplogroup));
-    
-    if (includeSubclades && filterHaplogroup) {
-        debouncedCheckHaplogroup(strMatches || []);
-    } else {
-        setMatchesWithHaplogroups(filteredMatches);
+        
+        setHaplogroupFilteredMatches(filtered);
+      }
+    } catch (error) {
+      console.error('❌ Ошибка фильтрации гаплогрупп:', error);
+      setHaplogroupFilteredMatches(strMatches);
+    } finally {
+      setLoading(false);
     }
-  }, [includeSubclades, debouncedCheckHaplogroup, strMatches, filteredMatches, filterHaplogroup]);
+  }, [filterHaplogroup, includeSubclades, showEmptyHaplogroups, strMatches, setLoading]);
 
-  // Сбрасываем активность фильтра при очистке поля фильтра
-  useEffect(() => {
-    if (!filterHaplogroup) {
-      setIsFilterActive(false);
-      setMatchesWithHaplogroups(strMatches || []);
-    }
-  }, [filterHaplogroup, strMatches]);
-
-  // Убираем автоматическую фильтрацию при изменении фильтра
-  useEffect(() => {
-    debouncedCheckHaplogroup.cancel();
-  }, [debouncedCheckHaplogroup]);
+  // Сбрасываем фильтр
+  const handleResetFilter = useCallback(() => {
+    setFilterHaplogroup('');
+    setIsFilterActive(false);
+    setHaplogroupFilteredMatches(strMatches);
+  }, [strMatches, setFilterHaplogroup]);
 
   // Определяем, какие матчи показывать
-  const displayedMatches = isFilterActive ? 
-    (includeSubclades ? matchesWithHaplogroups : filteredMatches) : 
-    strMatches;
+  const displayedMatches = isFilterActive ? haplogroupFilteredMatches : strMatches;
 
-  // Функция для сохранения только отфильтрованных профилей
+  // Обновляем отфильтрованные матчи при изменении основных матчей
+  useEffect(() => {
+    if (!isFilterActive) {
+      setHaplogroupFilteredMatches(strMatches);
+    }
+  }, [strMatches, isFilterActive]);
+
+  // 🔄 УПРОЩЕННАЯ функция для сохранения только отфильтрованных профилей
   const handleKeepFilteredOnly = useCallback(async () => {
     if (!displayedMatches?.length || !query) return;
 
@@ -465,27 +372,23 @@ const STRMatcher: React.FC = () => {
         filteredKitNumbers.add(query.kitNumber);
       }
       
-      // Фильтруем базу данных
-      const filteredDatabase = database.filter(profile => 
+      // 🔄 Фильтруем базу данных только в памяти
+      const filteredDatabase = database.filter(profile =>
         filteredKitNumbers.has(profile.kitNumber)
       );
 
       // Обновляем базу данных в памяти
       setDatabase(filteredDatabase);
       
-      // Обновляем IndexedDB
-      await dbManager.clearProfiles();
-      await dbManager.saveProfiles(filteredDatabase);
-      
       // Обновляем все наборы матчей
       setStrMatches(displayedMatches);
-      setMatchesWithHaplogroups(displayedMatches);
-      setFilteredByHaplogroup(displayedMatches);
+      setHaplogroupFilteredMatches(displayedMatches);
       
       // Сбрасываем фильтры после сохранения
       setFilterHaplogroup('');
       setIsFilterActive(false);
       
+      console.log(`🔄 Оставлено ${filteredDatabase.length} отфильтрованных профилей`);
     } catch (error) {
       console.error('Error keeping filtered profiles:', error);
       setError('Failed to update database with filtered profiles');
@@ -493,9 +396,9 @@ const STRMatcher: React.FC = () => {
       setLoading(false);
     }
   }, [displayedMatches, database, query, setLoading, setError, setDatabase, setStrMatches,
-      setMatchesWithHaplogroups, setFilteredByHaplogroup, setFilterHaplogroup, setIsFilterActive]);
+      setHaplogroupFilteredMatches, setFilterHaplogroup, setIsFilterActive]);
 
-  // Добавляем новую функцию для удаления отфильтрованных профилей
+  // 🔄 УПРОЩЕННАЯ функция для удаления отфильтрованных профилей
   const handleRemoveFiltered = useCallback(async () => {
     if (!displayedMatches?.length) return;
 
@@ -504,57 +407,53 @@ const STRMatcher: React.FC = () => {
       // Получаем kit numbers отфильтрованных профилей
       const filteredKitNumbers = new Set(displayedMatches.map(match => match.profile.kitNumber));
       
-      // Фильтруем базу данных, оставляя только НЕ отфильтрованные профили
-      const remainingDatabase = database.filter(profile => 
+      // 🔄 Фильтруем базу данных только в памяти, оставляя только НЕ отфильтрованные профили
+      const remainingDatabase = database.filter(profile =>
         !filteredKitNumbers.has(profile.kitNumber)
       );
 
       // Обновляем базу данных в памяти
       setDatabase(remainingDatabase);
       
-      // Обновляем IndexedDB
-      await dbManager.clearProfiles();
-      await dbManager.saveProfiles(remainingDatabase);
-      
       // Обновляем все наборы матчей
-      const remainingMatches = strMatches.filter(match => 
+      const remainingMatches = strMatches.filter(match =>
         !filteredKitNumbers.has(match.profile.kitNumber)
       );
       setStrMatches(remainingMatches);
-      setMatchesWithHaplogroups(remainingMatches);
-      setFilteredByHaplogroup(remainingMatches);
+      setHaplogroupFilteredMatches(remainingMatches);
       
       // Сбрасываем фильтры после удаления
       setFilterHaplogroup('');
       setIsFilterActive(false);
       
+      console.log(`🔄 Удалено ${filteredKitNumbers.size} профилей, осталось ${remainingDatabase.length}`);
     } catch (error) {
       console.error('Error removing filtered profiles:', error);
       setError('Failed to remove filtered profiles from database');
     } finally {
       setLoading(false);
     }
-  }, [displayedMatches, database, setLoading, setError, setDatabase, setStrMatches, 
-      setMatchesWithHaplogroups, setFilteredByHaplogroup, setFilterHaplogroup, setIsFilterActive]);
-
-  const handleResetFilter = useCallback(() => {
-    setFilterHaplogroup('');
-    setIsFilterActive(false);
-    setMatchesWithHaplogroups(strMatches || []);
-  }, [strMatches]);
+  }, [displayedMatches, database, setLoading, setError, setDatabase, setStrMatches,
+      setHaplogroupFilteredMatches, setFilterHaplogroup, setIsFilterActive]);
 
   // Добавляем функцию для экспорта базы данных в CSV
-  const handleExportDatabase = useCallback(() => {
-    if (!database.length) return;
+  // 🔄 УПРОЩЕННАЯ функция экспорта
+  const handleExportDatabase = useCallback(async () => {
+    if (!totalProfiles) return;
 
     try {
+      setLoading(true);
+      
+      // 🔄 УПРОЩЕНИЕ: экспортируем данные прямо из массива
+      const exportData = database;
+
       // Создаем заголовок CSV
       const headers = ['kitNumber', 'name', 'country', 'haplogroup', ...markers];
       
       // Конвертируем данные в CSV формат
       const csvContent = [
         headers.join(','),
-        ...database.map(profile => {
+        ...exportData.map(profile => {
           const row = [
             profile.kitNumber,
             profile.name || '',
@@ -585,11 +484,15 @@ const STRMatcher: React.FC = () => {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+      
+      console.log(`✅ Экспортировано ${exportData.length} профилей`);
     } catch (error) {
-      console.error('Error exporting database:', error);
+      console.error('❌ Ошибка экспорта базы данных:', error);
       setError('Failed to export database');
+    } finally {
+      setLoading(false);
     }
-  }, [database]);
+  }, [database, totalProfiles, setLoading, setError]);
 
   return (
     <>
@@ -639,10 +542,11 @@ const STRMatcher: React.FC = () => {
               <Collapsible title={t('database.sources')} defaultOpen={true}>
                 <div className="space-y-4">
                   <div className="text-sm text-gray-600">
-                    {t('database.loadedProfiles')}: {database.length}
+                    {t('database.loadedProfiles')}: {totalProfiles}
                   </div>
-                  <DataRepositories 
+                  <DataRepositories
                     onLoadData={async () => {}}
+                    mergeDatabase={mergeDatabase}
                     setDatabase={setDatabase}
                   />
                 </div>
@@ -650,9 +554,9 @@ const STRMatcher: React.FC = () => {
               
               <Collapsible title={t('database.manualInput')} defaultOpen={false}>
                 <DatabaseInput
-                  onDataLoaded={setDatabase}
+                  onDataLoaded={mergeDatabase}
                   onError={setError}
-                  recordCount={database.length}
+                  recordCount={totalProfiles}
                 />
               </Collapsible>
 
@@ -683,8 +587,8 @@ const STRMatcher: React.FC = () => {
                     onClearDatabase={handleClearDatabase}
                     onExportDatabase={handleExportDatabase}
                     loading={loading}
-                    disabled={!kitNumber || database.length === 0}
-                    databaseSize={database.length}
+                    disabled={!kitNumber || totalProfiles === 0}
+                    databaseSize={totalProfiles}
                   />
                   <HaplogroupFilter
                     id="haplogroup-filter"

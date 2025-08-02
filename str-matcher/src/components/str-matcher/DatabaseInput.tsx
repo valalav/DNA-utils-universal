@@ -24,10 +24,10 @@ const DatabaseInput: React.FC<DatabaseInputProps> = ({ onDataLoaded, onError, re
       setLoading(true);
       const profiles = await parseCSVData(text);
       
-      // Сохраняем в IndexedDB
-      await dbManager.clearProfiles();
-      await dbManager.saveProfiles(profiles);
+      // 🔄 НАКОПИТЕЛЬНОЕ СОХРАНЕНИЕ: используем новый метод mergeProfiles
+      await dbManager.mergeProfiles(profiles);
       
+      // Передаем только новые профили для добавления в память
       onDataLoaded(profiles);
     } catch (error) {
       console.error('Error parsing CSV data:', error);
@@ -63,7 +63,7 @@ const DatabaseInput: React.FC<DatabaseInputProps> = ({ onDataLoaded, onError, re
             <textarea
               className="w-full h-32 p-2 border rounded-md bg-background-primary resize-none"
               placeholder={t('database.pasteOrDrop')}
-              onChange={(e) => handleTextInput(e.target.value)}
+              onBlur={(e) => handleTextInput(e.target.value)}
             />
           </div>
           <div className="space-y-2">

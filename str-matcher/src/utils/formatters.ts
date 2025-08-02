@@ -1,4 +1,23 @@
-import { i18n } from './i18n';
+// ⚡ ПОЛНАЯ ЗАГЛУШКА для i18n до его реализации
+const i18n = {
+  t: (key: string, options?: any) => {
+    if (typeof options === 'string') return options;
+    if (options && typeof options === 'object' && 'default' in options) {
+      return options.default || key;
+    }
+    return key;
+  },
+  formatDate: (date: Date, options?: any) => {
+    return date.toLocaleDateString('ru-RU', options);
+  },
+  formatRelativeTime: (value: number, unit: string) => {
+    const rtf = new Intl.RelativeTimeFormat('ru', { numeric: 'auto' });
+    return rtf.format(value, unit as any);
+  },
+  formatNumber: (value: number, options?: Intl.NumberFormatOptions) => {
+    return new Intl.NumberFormat('ru-RU', options).format(value);
+  }
+};
 
 export class Formatters {
   // Форматирование значений маркеров

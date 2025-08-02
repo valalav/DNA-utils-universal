@@ -5,7 +5,7 @@ import { Provider } from 'react-redux';
 import { store } from '@/store/store';
 import { ColorSchemeProvider } from './ColorSchemeProvider';
 
-export function Providers({ children }: { children: React.ReactNode }) {
+function Providers({ children }: { children: React.ReactNode }) {
   return (
     <Provider store={store}>
       <ColorSchemeProvider>
@@ -16,3 +16,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
     </Provider>
   );
 }
+
+export { Providers };
+export default Providers;

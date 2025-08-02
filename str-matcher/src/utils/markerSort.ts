@@ -1,6 +1,15 @@
 import { markers, MarkerSortOrder } from './constants';
 import stabilityOrderData from './markerStability.json';
-import { i18n } from './i18n';
+// ⚡ УЛУЧШЕННАЯ ЗАГЛУШКА для i18n до его реализации
+const i18n = {
+  t: (key: string, options?: any) => {
+    if (typeof options === 'string') return options;
+    if (options && typeof options === 'object' && 'default' in options) {
+      return options.default || key;
+    }
+    return key;
+  }
+};
 
 const stabilityOrder = stabilityOrderData as Record<string, number>;
 

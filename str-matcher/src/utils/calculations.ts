@@ -1,4 +1,4 @@
-﻿import { markerGroups, palindromes } from './constants';
+import { markerGroups, palindromes } from './constants';
 import type { STRMatch, MarkerCount } from './constants';
 import type { Profile } from '@/types/profile';
 import type { HaplogroupFilter } from '@/types/haplogroup';
@@ -8,6 +8,15 @@ import { Match, Filters } from '../types';
 export interface CalculationMode {
   type: 'standard' | 'extended';
 }
+
+// ⚡ КЭШИРОВАНИЕ: Результаты проверки гаплогрупп
+const haplogroupCache = new Map<string, boolean>();
+const CACHE_EXPIRY = 60 * 60 * 1000; // 1 час
+const cacheTimestamps = new Map<string, number>();
+
+// ⚡ МЕМОИЗАЦИЯ: Кэш результатов редкости маркеров
+const rarityCache = new Map<string, { rarity: number; rarityStyle?: React.CSSProperties; timestamp: number }>();
+const RARITY_CACHE_EXPIRY = 5 * 60 * 1000; // 5 минут
 
 export function normalizeMarkerValue(value: string | number): number {
   if (typeof value === 'undefined' || value === null || value === '') return NaN;
@@ -52,7 +61,6 @@ export function calculateMarkerDifference(
   // Для полиндрома общая сумма тоже должна быть ограничена до 2!
   return mode.type === 'standard' ? Math.min(totalDiff, 2) : totalDiff;
 }
-
 export interface GeneticDistanceResult {
   distance: number;
   comparedMarkers: number;
@@ -146,12 +154,12 @@ export function calculateGeneticDistance(
     hasAllRequiredMarkers: true
   };
 }
-
 export interface MarkerRarityResult {
   rarity: number;
   rarityStyle?: React.CSSProperties;
 }
 
+// ⚡ ОПТИМИЗИРОВАННАЯ ФУНКЦИЯ: Редкость маркеров с мемоизацией
 export function calculateMarkerRarity(
   matches: STRMatch[],
   marker: string,
@@ -166,33 +174,54 @@ export function calculateMarkerRarity(
   const totalProfiles = matches.length;
   if (totalProfiles < 5) return { rarity: 0, rarityStyle: undefined };
 
-  const matchingRecords = matches.filter(match => 
-    match.profile.markers[marker] === value
-  );
+  // ⚡ КЭШИРОВАНИЕ: Проверяем кэш результатов
+  const cacheKey = `${marker}_${value}_${totalProfiles}`;
+  const cached = rarityCache.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp) < RARITY_CACHE_EXPIRY) {
+    return { rarity: cached.rarity, rarityStyle: cached.rarityStyle };
+  }
 
-  const percentage = (matchingRecords.length / totalProfiles) * 100;
+  // ⚡ ОПТИМИЗАЦИЯ: Быстрый подсчет с ранним выходом
+  let matchingCount = 0;
+  for (const match of matches) {
+    if (match.profile.markers[marker] === value) {
+      matchingCount++;
+    }
+  }
+
+  const percentage = (matchingCount / totalProfiles) * 100;
 
   // Set background color based on rarity
   let backgroundColor;
+  let rarityStyle: React.CSSProperties | undefined;
+  
   if (percentage <= 4) backgroundColor = 'var(--rarity-1)';
   else if (percentage <= 8) backgroundColor = 'var(--rarity-2)';
   else if (percentage <= 12) backgroundColor = 'var(--rarity-3)';
   else if (percentage <= 20) backgroundColor = 'var(--rarity-4)';
   else if (percentage <= 33) backgroundColor = 'var(--rarity-5)';
-  else return { rarity: percentage, rarityStyle: undefined };
+  else {
+    // ⚡ Кэшируем результат без стиля
+    const result = { rarity: percentage, rarityStyle: undefined };
+    rarityCache.set(cacheKey, { ...result, timestamp: Date.now() });
+    return result;
+  }
 
-  return {
-    rarity: percentage,
-    rarityStyle: {
-      backgroundColor,
-      color: backgroundColor === 'var(--rarity-5)' ? 'var(--text-primary)' : 'white',
-      width: '100%',
-      height: '100%',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }
+  rarityStyle = {
+    backgroundColor,
+    color: backgroundColor === 'var(--rarity-5)' ? 'var(--text-primary)' : 'white',
+    width: '100%',
+    height: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
   };
+
+  // ⚡ Кэшируем результат
+  const result = { rarity: percentage, rarityStyle };
+  rarityCache.set(cacheKey, { ...result, timestamp: Date.now() });
+  
+  return result;
 }
 
 export const calculateDistance = (
@@ -202,7 +231,6 @@ export const calculateDistance = (
   // TODO: Реализовать расчет генетического расстояния
   return 0;
 };
-
 export const findMatches = (
   query: Profile,
   database: Profile[],
@@ -262,23 +290,105 @@ const isHaplogroupMatch = (
   
   return profileHaplogroup.startsWith(filterHaplogroup);
 };
-
+// ⚡ КРИТИЧЕСКАЯ ОПТИМИЗАЦИЯ: Batch API вызовы вместо индивидуальных HTTP запросов
 export async function processMatches(matches: Match[], filters: Filters): Promise<Match[]> {
     if (filters.haplogroups.length === 0) return matches;
 
+    console.log(`🚀 Оптимизированная обработка ${matches.length} матчей для ${filters.haplogroups.length} гаплогрупп`);
+
+    // ⚡ ГРУППИРУЕМ по уникальным гаплогруппам для batch обработки
+    const uniqueHaplogroups = new Set<string>();
+    const matchesWithHaplogroups = matches.filter(match => {
+        if (!match.haplogroup) return false;
+        uniqueHaplogroups.add(match.haplogroup);
+        return true;
+    });
+
+    if (uniqueHaplogroups.size === 0) return [];
+
+    // ⚡ BATCH API ВЫЗОВ: Один запрос вместо тысяч!
+    try {
+        const batchPayload = {
+            haplogroups: Array.from(uniqueHaplogroups),
+            parentHaplogroups: filters.haplogroups
+        };
+
+        console.log(`📡 Отправляем batch запрос для ${uniqueHaplogroups.size} уникальных гаплогрупп`);
+        
+        const response = await axios.post<{ results: Record<string, boolean> }>('http://localhost:9003/api/batch-check-subclades', batchPayload);
+        
+        const results = response.data.results;
+
+        // ⚡ ФИЛЬТРУЕМ результаты используя batch ответ
+        const filteredMatches = matchesWithHaplogroups.filter(match => {
+            if (!match.haplogroup) return false;
+            
+            // ⚡ КЭШИРУЕМ результат для повторных использований
+            const cacheKey = `${match.haplogroup}_${filters.haplogroups.join('|')}`;
+            const isIncluded = results[match.haplogroup];
+            
+            if (isIncluded !== undefined) {
+                haplogroupCache.set(cacheKey, isIncluded);
+                cacheTimestamps.set(cacheKey, Date.now());
+                return isIncluded;
+            }
+            
+            return false;
+        });
+
+        console.log(`✅ Отфильтровано ${filteredMatches.length} из ${matches.length} матчей через batch API`);
+        return filteredMatches;
+
+    } catch (error) {
+        console.error('❌ Ошибка batch API, используем резервный метод:', error);
+        
+        // ⚡ РЕЗЕРВНЫЙ МЕТОД: Индивидуальные запросы с кэшированием
+        return await processMatchesWithCache(matchesWithHaplogroups, filters);
+    }
+}
+
+// ⚡ РЕЗЕРВНЫЙ МЕТОД: Оптимизированные индивидуальные запросы с кэшированием
+async function processMatchesWithCache(matches: Match[], filters: Filters): Promise<Match[]> {
     const filteredMatches: Match[] = [];
+    let cacheHits = 0;
+    let apiCalls = 0;
+
     for (const match of matches) {
         if (!match.haplogroup) continue;
 
         let include = false;
+        
         for (const filterHaplo of filters.haplogroups) {
+            const cacheKey = `${match.haplogroup}_${filterHaplo}`;
+            
+            // ⚡ ПРОВЕРЯЕМ КЭШ
+            const cached = haplogroupCache.get(cacheKey);
+            const timestamp = cacheTimestamps.get(cacheKey);
+            
+            if (cached !== undefined && timestamp && (Date.now() - timestamp) < CACHE_EXPIRY) {
+                cacheHits++;
+                if (cached) {
+                    include = true;
+                    break;
+                }
+                continue;
+            }
+
+            // ⚡ ДЕЛАЕМ API ЗАПРОС только если нет в кэше
             try {
-                const response = await axios.post<{ isSubclade: boolean }>('http://localhost:4001/api/check-subclade', {
+                apiCalls++;
+                const response = await axios.post<{ isSubclade: boolean }>('http://localhost:9003/api/check-subclade', {
                     haplogroup: match.haplogroup,
                     parentHaplogroup: filterHaplo
                 });
                 
-                if (response.data.isSubclade) {
+                const result = response.data.isSubclade;
+                
+                // ⚡ КЭШИРУЕМ результат
+                haplogroupCache.set(cacheKey, result);
+                cacheTimestamps.set(cacheKey, Date.now());
+                
+                if (result) {
                     include = true;
                     break;
                 }
@@ -286,9 +396,20 @@ export async function processMatches(matches: Match[], filters: Filters): Promis
                 console.error('Error checking subclade:', error);
             }
         }
+        
         if (include) {
             filteredMatches.push(match);
         }
     }
+
+    console.log(`📊 Резервная обработка: ${cacheHits} cache hits, ${apiCalls} API calls`);
     return filteredMatches;
+}
+
+// ⚡ СЛУЖЕБНАЯ ФУНКЦИЯ: Очистка кэша
+export function clearHaplogroupCache(): void {
+    haplogroupCache.clear();
+    cacheTimestamps.clear();
+    rarityCache.clear();
+    console.log('🗑️ Кэш гаплогрупп и редкости очищен');
 }

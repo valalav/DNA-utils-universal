@@ -334,7 +334,10 @@ export const translations = {
         r1b: '~4,300',
         Others: '~20,000',
         default: '~1,000'
-      }
+      },
+      clearDatabase: 'Clear Database',
+      clearDatabaseConfirmation: 'Are you sure you want to clear the database? This action cannot be undone.',
+      clearDatabaseError: 'Error clearing database: {message}',
     },
     errors: {
       enterKitNumber: 'Please enter Kit Number',
@@ -710,7 +713,10 @@ export const translations = {
         r1b: '~4,300',
         Others: '~20,000',
         default: '~1,000'
-      }
+      },
+      clearDatabase: "Очистить базу",
+      clearDatabaseConfirmation: "Вы уверены, что хотите очистить базу данных? Это действие нельзя отменить.",
+      clearDatabaseError: "Ошибка очистки базы данных: {message}",
     },
     errors: {
       enterKitNumber: 'Введите номер набора',

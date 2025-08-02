@@ -6,7 +6,6 @@ import { Search, Upload, Plus, Database, Filter, ArrowUpDown } from 'lucide-reac
 import DataSourceCard from './DataSourceCard';
 import { selectUserSettings, addCustomRepository } from '@/store/userProfile';
 import type { STRProfile, Repository } from '@/utils/constants';
-import { dbManager } from '@/utils/storage/indexedDB';
 import { parseCSVData } from '@/utils/dataProcessing';
 import { DEFAULT_REPOS } from '@/config/repositories.config';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -15,10 +14,11 @@ import '@/syles/DataRepositories.css'; // Import the new CSS file
 
 interface DataRepositoriesProps {
  onLoadData: (url: string, type: string, sheetName?: string) => Promise<void>;
- setDatabase: (profiles: STRProfile[]) => void;
+ mergeDatabase: (profiles: STRProfile[]) => void;
+ setDatabase: (profiles: STRProfile[]) => void; // Для функции очистки
 }
 
-const DataRepositories: React.FC<DataRepositoriesProps> = ({ onLoadData, setDatabase }) => {
+const DataRepositories: React.FC<DataRepositoriesProps> = ({ onLoadData, mergeDatabase, setDatabase }) => {
  const { t } = useTranslation();
  const [repositories, setRepositories] = useState<Repository[]>([]);
  const [searchTerm, setSearchTerm] = useState('');
@@ -45,6 +45,7 @@ const DataRepositories: React.FC<DataRepositoriesProps> = ({ onLoadData, setData
    setRepositories([...DEFAULT_REPOS, ...userSettings.customRepositories]);
  }, [userSettings.customRepositories]);
 
+ // 🔄 УПРОЩЕННАЯ загрузка файла - работаем только в памяти
  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
    const file = event.target.files?.[0];
    if (!file) return;
@@ -54,19 +55,11 @@ const DataRepositories: React.FC<DataRepositoriesProps> = ({ onLoadData, setData
    setError(null);
 
    try {
-      await dbManager.init();
       const profiles = await parseCSVData(await file.text());
+      console.log(`🔄 Загружено ${profiles.length} профилей из файла`);
       
-      // Получаем существующие профили
-      const existingProfiles = await dbManager.getProfiles();
-      const existingKits = new Set(existingProfiles.map(p => p.kitNumber));
-      
-      // Фильтруем только новые профили
-      const newProfiles = profiles.filter(p => !existingKits.has(p.kitNumber));
-      
-      // Сохраняем комбинацию существующих и новых профилей
-      await dbManager.saveProfiles([...existingProfiles, ...newProfiles]);
-      setDatabase(await dbManager.getProfiles());
+      // 🔄 НАКОПИТЕЛЬНАЯ ЗАГРУЗКА: используем mergeDatabase вместо setDatabase
+      mergeDatabase(profiles);
    } catch (error: any) {
      console.error('Error processing file:', error);
      setError(t('database.processingError', { message: error.message }));
@@ -105,15 +98,14 @@ const DataRepositories: React.FC<DataRepositoriesProps> = ({ onLoadData, setData
   return profiles;
  };
 
-// Обновленная функция загрузки выбранных репозиториев
+// 🔄 УПРОЩЕННАЯ функция загрузки выбранных репозиториев
 const handleLoadSelected = async (repoIds: string[]) => {
   console.log("=== Начало загрузки репозиториев ===");
   setLoading(true);
   setError(null);
 
   try {
-    console.log("Инициализация базы данных...");
-    await dbManager.init();
+    const allProfiles: STRProfile[] = [];
 
     for (const repoId of repoIds) {
       setLoadingRepo(repoId); // Устанавливаем ID текущего загружаемого репозитория
@@ -124,7 +116,7 @@ const handleLoadSelected = async (repoIds: string[]) => {
       
       if (repo.type === 'chunked_json') {
         const profiles = await loadChunkedJson(repo);
-        await dbManager.saveProfiles(profiles);
+        allProfiles.push(...profiles);
       } else {
         const response = await fetch(repo.url);
         if (!response.ok) throw new Error(t('database.loadError', { name: repo.name }));
@@ -137,14 +129,13 @@ const handleLoadSelected = async (repoIds: string[]) => {
         const profiles = await parseCSVData(csvData, setProgress);
         console.log(`Распаршено ${profiles.length} профилей`);
         
-        console.log("Сохранение в IndexedDB...");
-        await dbManager.saveProfiles(profiles);
-        console.log("Профили сохранены");
+        allProfiles.push(...profiles);
       }
     }
 
-    console.log("Получение всех профилей...");
-    setDatabase(await dbManager.getProfiles());
+    console.log(`🔄 Загружено всего ${allProfiles.length} профилей для объединения`);
+    // 🔄 НАКОПИТЕЛЬНАЯ ЗАГРУЗКА: используем mergeDatabase вместо setDatabase
+    mergeDatabase(allProfiles);
     console.log("=== Загрузка завершена ===");
 
   } catch (error) {
@@ -211,6 +202,24 @@ const handleLoadSingle = async (repoId: string) => {
    }
  };
 
+ // 🔄 УПРОЩЕННАЯ очистка базы данных
+ const handleClearDatabase = async () => {
+   if (window.confirm(t('database.clearDatabaseConfirmation'))) {
+     setLoading(true);
+     setError(null);
+     try {
+       // 🔄 Очищаем массив в памяти (для очистки используем setDatabase, а не mergeDatabase)
+       setDatabase([]);
+       console.log('🔄 База данных очищена');
+     } catch (error: any) {
+       console.error('Error clearing database:', error);
+       setError(t('database.clearDatabaseError', { message: error.message }));
+     } finally {
+       setLoading(false);
+     }
+   }
+ };
+
  return (
    <div className="space-y-5">
      {/* Заголовок секции */}
@@ -246,6 +255,13 @@ const handleLoadSingle = async (repoId: string) => {
          >
            <Plus className="h-3 w-3" />
            {isAdding ? t('common.cancel') : t('database.addSource')}
+         </button>
+         <button
+           onClick={handleClearDatabase}
+           className="flex items-center gap-1 px-2 py-1 text-xs bg-flat-danger text-white rounded hover:bg-flat-danger/90 transition-all border border-transparent"
+         >
+           <Database className="h-3 w-3" />
+           {t('database.clearDatabase')}
          </button>
        </div>
      </div>
