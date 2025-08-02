@@ -8,9 +8,9 @@ module.exports = {
         NODE_ENV: "production",
         PORT: 9003,
         API_PATH: "/api",
-        // В продакшене укажите здесь домен вашего str-matcher, например "https://your-domain.com"
-        // Для локального продакшен-теста разрешаем запросы с порта 9002
-        ALLOWED_ORIGINS: "http://localhost:9002,http://127.0.0.1:9002"
+        // В продакшене укажите здесь дополнительные домены если нужно, например "https://your-domain.com"
+        // Порт 9002 разрешен автоматически логикой CORS
+        ALLOWED_ORIGINS: ""
       }
     },
     {

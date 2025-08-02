@@ -75,22 +75,39 @@ const corsOptions = {
             return callback(null, true);
         }
 
-        // В режиме продакшена, используем строгий список из переменной окружения.
-        const allowedOriginsStr = process.env.ALLOWED_ORIGINS || '';
-        const allowedOrigins = allowedOriginsStr.split(',').filter(Boolean);
-
-        if (allowedOrigins.length === 0 && origin) {
-            console.warn(`⚠️ CORS WARNING: No ALLOWED_ORIGINS set for production. Blocking request from ${origin}.`);
-        }
-
-        // Разрешаем запросы без origin (например, с того же домена) или если источник в списке.
-        if (!origin || allowedOrigins.includes(origin)) {
+        // В продакшене, используем умную логику для универсальности
+        if (!origin) {
+            // Запросы без origin (например, с того же домена) всегда разрешены
             return callback(null, true);
         }
 
-        // Блокируем все остальные запросы в продакшене.
-        console.error(`CORS Blocked: Origin ${origin} is not in the allowed list.`);
-        return callback(new Error(`CORS policy does not allow access from the specified origin: ${origin}`));
+        // Парсим origin для проверки
+        try {
+            const originUrl = new URL(origin);
+            
+            // Разрешаем запросы на порт 9002 с любого IP
+            if (originUrl.port === '9002') {
+                console.log(`CORS: Allowing request from str-matcher on ${originUrl.hostname}:9002`);
+                return callback(null, true);
+            }
+            
+            // Дополнительно проверяем список разрешенных origins из переменной окружения
+            const allowedOriginsStr = process.env.ALLOWED_ORIGINS || '';
+            const allowedOrigins = allowedOriginsStr.split(',').filter(Boolean);
+            
+            if (allowedOrigins.includes(origin)) {
+                console.log(`CORS: Allowing request from explicitly allowed origin: ${origin}`);
+                return callback(null, true);
+            }
+            
+            // Блокируем все остальные запросы
+            console.warn(`CORS: Blocking request from disallowed origin: ${origin}`);
+            return callback(new Error(`CORS policy does not allow access from origin: ${origin}`));
+            
+        } catch (error) {
+            console.error(`CORS: Invalid origin format: ${origin}`);
+            return callback(new Error(`CORS policy does not allow access from invalid origin: ${origin}`));
+        }
     }
 };
 
