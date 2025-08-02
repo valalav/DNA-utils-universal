@@ -6,6 +6,7 @@ cd /opt/DNA-utils-universal
 
 echo "Останавливаем сервисы..."
 pm2 stop all
+pm2 delete all
 
 echo "Обновляем код..."
 # Fetch the latest changes from the remote repository
@@ -25,7 +26,14 @@ cd str-matcher && npm install && cd ..
 cd ftdna_haplo/client && npm install && cd ../..
 cd ftdna_haplo/server && npm install && cd ../..
 
+echo "Очищаем кэш Next.js..."
+cd str-matcher && rm -rf .next && cd ..
+
 echo "Перезапускаем сервисы..."
 npm run dev
+
+echo "Проверяем статус сервисов..."
+sleep 5
+pm2 list
 
 echo "Обновление завершено!"

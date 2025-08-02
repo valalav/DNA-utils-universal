@@ -29,7 +29,7 @@ module.exports = {
       args: 'dev -H 0.0.0.0',
       env: {
         NODE_ENV: process.env.NODE_ENV || 'development',
-        NEXT_PUBLIC_API_URL: process.env.DEV_API_URL || `http://${HOST_IP}:9003/api`,
+        NEXT_PUBLIC_API_URL: process.env.DEV_API_URL || `http://${HOST_IP}:9003`,
         PORT: 9002
       }
     },
@@ -55,7 +55,7 @@ module.exports = {
       env: {
         NODE_ENV: process.env.NODE_ENV || 'development',
         PORT: 5173,
-        VITE_API_URL: isProduction ? '/api' : process.env.DEV_API_URL || `http://${HOST_IP}:9003/api`
+        VITE_API_URL: isProduction ? '/api' : `http://${HOST_IP}:9003`
       }
     }
   ]

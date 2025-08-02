@@ -1,5 +1,5 @@
 import { markers, MarkerSortOrder } from './constants';
-import stabilityOrderData from './markerStability.json';
+
 // ⚡ УЛУЧШЕННАЯ ЗАГЛУШКА для i18n до его реализации
 const i18n = {
   t: (key: string, options?: any) => {
@@ -11,6 +11,8 @@ const i18n = {
   }
 };
 
+// Импорт JSON данных с использованием require для лучшей совместимости с Next.js
+const stabilityOrderData = require('./markerStability.json');
 const stabilityOrder = stabilityOrderData as Record<string, number>;
 
 // Получение порядка стабильности для маркера

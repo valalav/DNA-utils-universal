@@ -315,7 +315,7 @@ export async function processMatches(matches: Match[], filters: Filters): Promis
 
         console.log(`📡 Отправляем batch запрос для ${uniqueHaplogroups.size} уникальных гаплогрупп`);
         
-        const response = await axios.post<{ results: Record<string, boolean> }>('http://localhost:9003/api/batch-check-subclades', batchPayload);
+        const response = await axios.post<{ results: Record<string, boolean> }>(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9003'}/api/batch-check-subclades`, batchPayload);
         
         const results = response.data.results;
 
@@ -377,7 +377,7 @@ async function processMatchesWithCache(matches: Match[], filters: Filters): Prom
             // ⚡ ДЕЛАЕМ API ЗАПРОС только если нет в кэше
             try {
                 apiCalls++;
-                const response = await axios.post<{ isSubclade: boolean }>('http://localhost:9003/api/check-subclade', {
+                const response = await axios.post<{ isSubclade: boolean }>(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9003'}/api/check-subclade`, {
                     haplogroup: match.haplogroup,
                     parentHaplogroup: filterHaplo
                 });

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9003/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9003';
 
 export const useHaplogroups = () => {
     const [filterHaplogroup, setFilterHaplogroup] = useState<string>('');
@@ -29,7 +29,7 @@ export const useHaplogroups = () => {
             }
 
             try {
-                const response = await axios.post(`${API_URL}/check-subclade`, {
+                const response = await axios.post(`${API_URL}/api/check-subclade`, {
                     haplogroup,
                     parentHaplogroup: filterHaplogroup
                 });
