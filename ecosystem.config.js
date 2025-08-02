@@ -42,10 +42,11 @@ module.exports = {
         PORT: 9003,
         HOST: '0.0.0.0',
         API_PATH: '/api',
-        ALLOWED_ORIGINS: isProduction ? 
-          process.env.PROD_ALLOWED_ORIGINS : 
+        ALLOWED_ORIGINS: isProduction ?
+          process.env.PROD_ALLOWED_ORIGINS :
           process.env.DEV_ALLOWED_ORIGINS || `http://${HOST_IP}:9002,http://${HOST_IP}:5173,http://localhost:9002,http://localhost:5173`
-      }
+      },
+      env_file: isProduction ? './.env.production' : './.env.development'
     },
     {
       name: 'haplo-client',
@@ -56,7 +57,8 @@ module.exports = {
         NODE_ENV: process.env.NODE_ENV || 'development',
         PORT: 5173,
         VITE_API_URL: isProduction ? '/api' : `http://${HOST_IP}:9003`
-      }
+      },
+      env_file: './.env.development'
     }
   ]
 };
