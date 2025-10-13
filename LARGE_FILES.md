@@ -6,7 +6,7 @@
 
 | Файл | Размер | Описание | Ссылка для скачивания |
 |------|--------|----------|----------------------|
-| `scripts/upload_data.sql` | 159 MB | SQL дамп базы данных с профилями Y-STR (200k+ профилей) | Свяжитесь с автором для получения файла |
+| `scripts/upload_data.sql` | 159 MB | SQL дамп базы данных с профилями Y-STR (200k+ профилей) | [Скачать с GitHub Releases](https://github.com/valalav/YSTR-Genetic-Matcher/releases/download/v2.0.0-data/upload_data.sql) |
 | `ftdna_haplo/data/get.json` | 102 MB | JSON данные гаплогрупп FTDNA | Отслеживается через Git LFS |
 
 ## Инструкции по установке
