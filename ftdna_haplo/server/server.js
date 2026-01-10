@@ -11,7 +11,7 @@ const { SearchIntegrator } = require('../search_integration');
 const HaplogroupService = require('./services/haplogroup-service');
 
 const app = express();
-const PORT = process.env.PORT || 9003;
+const PORT = process.env.PORT;
 const API_PATH = process.env.API_PATH || '/api';
 
 // Define base directory for the application
@@ -447,7 +447,7 @@ app.get('*', (req, res) => {
 
 
 // Start server
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`Serving API at ${API_PATH}`);
     console.log(`Serving client from ${clientBuildPath}`);
