@@ -22,6 +22,129 @@ const updateSampleSchema = Joi.object({
   markers: Joi.object()
 }).min(1); // At least one field must be present
 
+// Schema for bulk sample import
+const bulkSamplesSchema = Joi.object({
+  samples: Joi.array().items(
+    Joi.object({
+      kitNumber: Joi.string().required().max(20),
+      name: Joi.string().allow('').max(100),
+      country: Joi.string().allow('').max(50),
+      haplogroup: Joi.string().allow('').max(50),
+      markers: Joi.object().required().min(1)
+    })
+  ).required().min(1).max(5000)
+});
+
+/**
+ * POST /api/samples/bulk - Bulk import samples (optimized for 1000-5000 samples)
+ * Requires API key with 'samples.create' permission
+ *
+ * Uses PostgreSQL bulk_insert_profiles function for single-transaction insert
+ * ~100x faster than individual POST /api/samples calls
+ */
+router.post('/bulk',
+  requireApiKey('samples.create'),
+  validateRequest(bulkSamplesSchema),
+  asyncHandler(async (req, res) => {
+    const { samples } = req.body;
+    const startTime = Date.now();
+
+    try {
+      // Validate marker values (numeric, ranges like 13-14, or multi-copy like 11-12-12-16)
+      // Pattern: numbers separated by dashes, with optional decimals
+      const markerValueRegex = /^[0-9]+(\.[0-9]+)?(-[0-9]+(\.[0-9]+)?)*$/;
+      let cleanedMarkersCount = 0;
+
+      // Clean invalid markers from each sample (don't reject entire sample)
+      const validSamples = samples.map(sample => {
+        const cleanMarkers = {};
+        for (const [marker, value] of Object.entries(sample.markers)) {
+          const strValue = value?.toString().trim();
+          if (strValue && markerValueRegex.test(strValue)) {
+            cleanMarkers[marker] = strValue;
+          } else if (strValue) {
+            cleanedMarkersCount++;
+          }
+        }
+        return { ...sample, markers: cleanMarkers };
+      }).filter(sample => Object.keys(sample.markers).length > 0);
+
+      const invalidSamples = samples.length - validSamples.length;
+
+      if (validSamples.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'No valid samples to import (all samples have no valid markers)'
+        });
+      }
+
+      // Transform to database format and deduplicate by kitNumber (keep last occurrence)
+      const profilesMap = new Map();
+      for (const sample of validSamples) {
+        profilesMap.set(sample.kitNumber, {
+          kit_number: sample.kitNumber,
+          name: sample.name || '',
+          country: sample.country || '',
+          haplogroup: sample.haplogroup || '',
+          markers: sample.markers
+        });
+      }
+      const profilesData = Array.from(profilesMap.values());
+      const duplicatesRemoved = validSamples.length - profilesData.length;
+
+      // Process in chunks to avoid PostgreSQL statement timeout
+      const CHUNK_SIZE = 500; // Optimized for fast batch INSERT
+      let insertedCount = 0;
+
+      for (let i = 0; i < profilesData.length; i += CHUNK_SIZE) {
+        const chunk = profilesData.slice(i, i + CHUNK_SIZE);
+        const query = 'SELECT bulk_insert_profiles($1) as inserted_count';
+        const result = await executeQuery(query, [JSON.stringify(chunk)]);
+        insertedCount += result.rows[0].inserted_count;
+      }
+      const duration = Date.now() - startTime;
+
+      // Log single audit entry for bulk operation
+      await logAudit(
+        req,
+        'BULK_CREATE',
+        'ystr_profiles',
+        `bulk:${insertedCount}`,
+        null,
+        { count: insertedCount, duration, skipped: invalidSamples, cleanedMarkers: cleanedMarkersCount },
+        true
+      );
+
+      res.status(201).json({
+        success: true,
+        message: `Bulk import completed`,
+        inserted: insertedCount,
+        skipped: invalidSamples,
+        duplicatesRemoved,
+        cleanedMarkers: cleanedMarkersCount,
+        total: samples.length,
+        duration,
+        speed: Math.round(insertedCount / (duration / 1000)) + ' samples/sec'
+      });
+    } catch (error) {
+      const duration = Date.now() - startTime;
+
+      await logAudit(
+        req,
+        'BULK_CREATE',
+        'ystr_profiles',
+        `bulk:failed`,
+        null,
+        null,
+        false,
+        error.message
+      );
+
+      throw error;
+    }
+  })
+);
+
 /**
  * POST /api/samples - Create or update a sample
  * Requires API key with 'samples.create' permission

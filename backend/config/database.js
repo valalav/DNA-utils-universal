@@ -15,8 +15,8 @@ const pool = new Pool({
   connectionTimeoutMillis: 5000,
 
   // Performance optimizations
-  statement_timeout: 30000,
-  query_timeout: 30000,
+  statement_timeout: 120000,  // 2 min for bulk operations
+  query_timeout: 120000,
   application_name: 'ystr-matcher-backend'
 });
 

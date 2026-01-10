@@ -38,6 +38,13 @@ const COMMON_STR_MARKERS = [
   'DYS643', 'DYS497', 'DYS510', 'DYS434', 'DYS461', 'DYS435'
 ];
 
+// Columns to keep from Google Sheets (all others are ignored)
+const ALLOWED_COLUMNS = new Set([
+  'Kit Number', 'Name', 'Paternal Ancestor Name', 'Country', 'Haplogroup',
+  // All STR markers
+  ...COMMON_STR_MARKERS
+]);
+
 const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = '', initialKitNumber }) => {
   const [mode, setMode] = useState<'add' | 'edit' | 'bulk'>(initialKitNumber ? 'edit' : 'add');
   const [sample, setSample] = useState<Sample>({
@@ -52,6 +59,19 @@ const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = '', 
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [clipboardText, setClipboardText] = useState('');
   const [parsedSamples, setParsedSamples] = useState<Sample[]>([]);
+
+  // Google Sheets / URL import state
+  const [sheetUrl, setSheetUrl] = useState('');
+  const [sheetName, setSheetName] = useState('');
+  const [loadingUrl, setLoadingUrl] = useState(false);
+
+  // Upload progress state
+  const [uploadProgress, setUploadProgress] = useState<{
+    current: number;
+    total: number;
+    inserted: number;
+    skipped: number;
+  } | null>(null);
 
   // Fetch sample for editing
   const fetchSample = useCallback(async (kitNumber: string) => {
@@ -203,7 +223,8 @@ const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = '', 
     }
   }, [clipboardText]);
 
-  // Upload parsed samples
+  // Upload parsed samples using bulk API (optimized for 1000+ samples)
+  // Supports chunked upload for datasets > 2000 samples
   const uploadParsedSamples = useCallback(async () => {
     if (parsedSamples.length === 0) {
       setMessage({ type: 'error', text: 'No samples to upload' });
@@ -212,40 +233,73 @@ const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = '', 
 
     setLoading(true);
     setMessage(null);
+    setUploadProgress(null);
 
-    let successCount = 0;
-    let errorCount = 0;
+    const CHUNK_SIZE = 2000; // Optimal batch size for PostgreSQL
+    const chunks: Sample[][] = [];
 
-    for (const sample of parsedSamples) {
-      try {
-        const response = await fetch(`${backendUrl}/api/samples`, {
+    // Split into chunks if needed
+    for (let i = 0; i < parsedSamples.length; i += CHUNK_SIZE) {
+      chunks.push(parsedSamples.slice(i, i + CHUNK_SIZE));
+    }
+
+    let totalInserted = 0;
+    let totalSkipped = 0;
+    let totalDuration = 0;
+    const startTime = Date.now();
+
+    try {
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+
+        // Update progress
+        setUploadProgress({
+          current: i + 1,
+          total: chunks.length,
+          inserted: totalInserted,
+          skipped: totalSkipped
+        });
+
+        const response = await fetch(`${backendUrl}/api/samples/bulk`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'X-API-Key': apiKey
           },
-          body: JSON.stringify(sample)
+          body: JSON.stringify({ samples: chunk })
         });
 
-        if (response.ok) {
-          successCount++;
-        } else {
-          errorCount++;
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || data.message || `Chunk ${i + 1} failed`);
         }
-      } catch (error) {
-        errorCount++;
+
+        totalInserted += data.inserted;
+        totalSkipped += data.skipped;
+        totalDuration += data.duration;
       }
-    }
 
-    setLoading(false);
-    setMessage({
-      type: errorCount === 0 ? 'success' : 'error',
-      text: `Uploaded: ${successCount} success, ${errorCount} failed`
-    });
+      const totalTime = Date.now() - startTime;
+      const speed = Math.round(totalInserted / (totalTime / 1000));
 
-    if (successCount > 0) {
-      setParsedSamples([]);
-      setClipboardText('');
+      setMessage({
+        type: totalSkipped > 0 ? 'error' : 'success',
+        text: `Uploaded ${totalInserted} samples in ${totalTime}ms (${speed} samples/sec)${totalSkipped > 0 ? `. Skipped: ${totalSkipped} invalid` : ''}`
+      });
+
+      if (totalInserted > 0) {
+        setParsedSamples([]);
+        setClipboardText('');
+      }
+    } catch (error) {
+      setMessage({
+        type: 'error',
+        text: `Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}. Uploaded ${totalInserted} before error.`
+      });
+    } finally {
+      setLoading(false);
+      setUploadProgress(null);
     }
   }, [parsedSamples, apiKey, backendUrl]);
 
@@ -261,6 +315,147 @@ const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = '', 
     };
     reader.readAsText(file);
   }, []);
+
+  // Convert Google Sheets URL to CSV export URL
+  const getGoogleSheetsCsvUrl = useCallback((url: string, sheetName?: string): string | null => {
+    try {
+      // Already a CSV export URL
+      if (url.includes('/pub?') && url.includes('output=csv')) {
+        return url;
+      }
+
+      // Standard Google Sheets URL: https://docs.google.com/spreadsheets/d/{SHEET_ID}/edit...
+      const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+      if (!match) return null;
+
+      const sheetId = match[1];
+
+      // If sheet name is provided, we need to use the gviz API to get data
+      // Otherwise, use the default export
+      if (sheetName) {
+        // Use the export URL with sheet parameter
+        return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+      }
+
+      // Extract gid from URL if present
+      const gidMatch = url.match(/[#&]gid=(\d+)/);
+      const gid = gidMatch ? gidMatch[1] : '0';
+
+      return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // Load data from Google Sheets or CSV URL
+  const loadFromUrl = useCallback(async () => {
+    if (!sheetUrl.trim()) {
+      setMessage({ type: 'error', text: 'Please enter a URL' });
+      return;
+    }
+
+    setLoadingUrl(true);
+    setMessage(null);
+
+    try {
+      let csvUrl = sheetUrl.trim();
+
+      // Check if it's a Google Sheets URL
+      if (csvUrl.includes('docs.google.com/spreadsheets')) {
+        const convertedUrl = getGoogleSheetsCsvUrl(csvUrl, sheetName.trim() || undefined);
+        if (!convertedUrl) {
+          throw new Error('Invalid Google Sheets URL');
+        }
+        csvUrl = convertedUrl;
+      }
+
+      // Fetch the CSV data
+      const response = await fetch(csvUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
+      }
+
+      const csvText = await response.text();
+
+      // Parse CSV
+      const parsed = Papa.parse(csvText.trim(), {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (header) => header.trim()
+      });
+
+      if (parsed.errors.length > 0) {
+        console.warn('CSV parsing warnings:', parsed.errors);
+      }
+
+      // Process and filter data
+      const samples: Sample[] = [];
+      let skippedNoHaplogroup = 0;
+      let skippedNoKit = 0;
+
+      parsed.data.forEach((row: any) => {
+        // Filter: skip rows without Haplogroup
+        const haplogroup = row['Haplogroup'] || row.haplogroup || '';
+        if (!haplogroup.trim()) {
+          skippedNoHaplogroup++;
+          return;
+        }
+
+        // Extract kit number
+        const kitNumber = row['Kit Number'] || row.kitNumber || row.kit_number || row.KitNumber || '';
+        if (!kitNumber.toString().trim()) {
+          skippedNoKit++;
+          return;
+        }
+
+        // Extract basic info (only allowed columns)
+        const name = row['Name'] || row.name || '';
+        const paternalAncestor = row['Paternal Ancestor Name'] || '';
+        const country = row['Country'] || row.country || '';
+
+        // Combine name with paternal ancestor if available
+        const fullName = paternalAncestor ? `${name} (${paternalAncestor})` : name;
+
+        // Extract markers (only STR markers)
+        const markers: Record<string, string> = {};
+        Object.keys(row).forEach(key => {
+          const trimmedKey = key.trim();
+          // Check if it's an allowed marker column
+          if (ALLOWED_COLUMNS.has(trimmedKey) &&
+              (trimmedKey.startsWith('DYS') || trimmedKey.startsWith('Y-') ||
+               trimmedKey === 'YCAII' || trimmedKey === 'CDY')) {
+            const value = row[key]?.toString().trim();
+            if (value && value !== '' && value !== '0' && value !== '-') {
+              markers[trimmedKey] = value;
+            }
+          }
+        });
+
+        if (Object.keys(markers).length > 0) {
+          samples.push({
+            kitNumber: kitNumber.toString().trim(),
+            name: fullName,
+            country,
+            haplogroup,
+            markers
+          });
+        }
+      });
+
+      setParsedSamples(samples);
+      setMessage({
+        type: 'success',
+        text: `Loaded ${samples.length} samples from URL. Skipped: ${skippedNoHaplogroup} without haplogroup, ${skippedNoKit} without kit number.`
+      });
+    } catch (error) {
+      setMessage({
+        type: 'error',
+        text: `Failed to load: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
+    } finally {
+      setLoadingUrl(false);
+    }
+  }, [sheetUrl, sheetName, getGoogleSheetsCsvUrl]);
 
   // Reload cache - clear backend cache and optionally reload page
   const reloadCache = useCallback(async () => {
@@ -448,10 +643,46 @@ const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = '', 
 
           {mode === 'bulk' && (
             <div className="space-y-4">
+              {/* Google Sheets / URL Import Section */}
+              <div className="p-4 border rounded-lg bg-blue-50 space-y-3">
+                <h4 className="font-semibold text-blue-800">Import from Google Sheets or CSV URL</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="md:col-span-2 space-y-1">
+                    <Label className="text-sm">Google Sheets URL or CSV link</Label>
+                    <Input
+                      value={sheetUrl}
+                      onChange={(e) => setSheetUrl(e.target.value)}
+                      placeholder="https://docs.google.com/spreadsheets/d/... or CSV URL"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-sm">Sheet name (optional)</Label>
+                    <Input
+                      value={sheetName}
+                      onChange={(e) => setSheetName(e.target.value)}
+                      placeholder="e.g., Haplotypes"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={loadFromUrl} disabled={loadingUrl} variant="default">
+                    {loadingUrl ? 'Loading...' : 'Load from URL'}
+                  </Button>
+                </div>
+                <p className="text-xs text-blue-600">
+                  Filters: Only rows with non-empty Haplogroup will be imported.
+                  Columns: Kit Number, Name, Paternal Ancestor Name, Country, Haplogroup, and all STR markers.
+                </p>
+              </div>
+
+              <div className="border-t pt-4">
+                <h4 className="font-semibold mb-2">Or paste/upload data manually</h4>
+              </div>
+
               <div className="space-y-2">
                 <Label>Paste data from Excel or CSV</Label>
                 <textarea
-                  className="w-full h-64 p-2 border rounded font-mono text-sm"
+                  className="w-full h-48 p-2 border rounded font-mono text-sm"
                   value={clipboardText}
                   onChange={(e) => setClipboardText(e.target.value)}
                   placeholder="Paste your data here (with headers)&#10;Example:&#10;Kit Number,Name,Country,Haplogroup,DYS393,DYS390...&#10;55520,Pizhinov,Circassia,J-Y94477,12,22..."
@@ -467,16 +698,31 @@ const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = '', 
                 />
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <Button onClick={parseClipboardData} variant="outline">
-                  Parse Data
+                  Parse Pasted Data
                 </Button>
                 {parsedSamples.length > 0 && (
                   <Button onClick={uploadParsedSamples} disabled={loading}>
                     {loading ? 'Uploading...' : `Upload ${parsedSamples.length} Samples`}
                   </Button>
                 )}
+                {uploadProgress && (
+                  <span className="text-sm text-blue-600 ml-2">
+                    Batch {uploadProgress.current}/{uploadProgress.total} | {uploadProgress.inserted} inserted
+                  </span>
+                )}
               </div>
+
+              {/* Progress bar for large uploads */}
+              {uploadProgress && uploadProgress.total > 1 && (
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  <div
+                    className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                    style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+                  />
+                </div>
+              )}
 
               {parsedSamples.length > 0 && (
                 <div className="border rounded p-4 max-h-96 overflow-y-auto">
