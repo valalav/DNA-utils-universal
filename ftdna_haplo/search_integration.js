@@ -44,7 +44,12 @@ class SearchIntegrator {
             const result = targetTree.findHaplogroup(nodeSNP);
             if (result) {
                 const details = targetTree.getHaplogroupDetails(result.haplogroupId);
-                if (details?.path?.string.startsWith(haploPrefix)) {
+                // Check if any node in path belongs to the target haplogroup (e.g., J, R, I)
+                // Path string starts with root (A-...), so we check nodes instead
+                const pathContainsHaplo = details?.path?.nodes?.some(
+                    n => n.name?.split('-')[0] === haploPrefix
+                );
+                if (pathContainsHaplo) {
                     console.log(`Found match: ${result.name}`);
                     return {
                         result,

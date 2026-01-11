@@ -7,7 +7,7 @@ class HaplogroupService {
 
     async searchHaplogroup(term) {
         console.log('\nSearching for:', term);
-        
+
         const result = {
             ftdna: null,
             yfull: null
@@ -33,10 +33,14 @@ class HaplogroupService {
             if (yfullNode) {
                 const details = this.yfullTree.getHaplogroupDetails(yfullNode.id);
                 if (details?.path) {
+                    // Use the node's canonical ID for the URL, not the search term
+                    // This handles synonyms: searching for "CTS1192" will use URL with "J-Z387"
                     result.yfull = {
                         path: details.path,
-                        url: `https://www.yfull.com/tree/${term}/`,
-                        statistics: details.statistics
+                        url: `https://www.yfull.com/tree/${yfullNode.id}/`,
+                        statistics: details.statistics,
+                        searchedTerm: term,
+                        canonicalId: yfullNode.id
                     };
                 }
             }
@@ -49,10 +53,13 @@ class HaplogroupService {
             if (yfullMatch?.result) {
                 const details = this.yfullTree.getHaplogroupDetails(yfullMatch.result.id);
                 if (details?.path) {
+                    // Use node ID (canonical YFull identifier) for URL
                     result.yfull = {
                         path: details.path,
-                        url: `https://www.yfull.com/tree/${yfullMatch.result.name}/`,
-                        statistics: details.statistics
+                        url: `https://www.yfull.com/tree/${yfullMatch.result.id}/`,
+                        statistics: details.statistics,
+                        matchedViaCrossTree: true,
+                        matchedSNP: yfullMatch.matchedSNP
                     };
                 }
             }
@@ -109,6 +116,37 @@ class HaplogroupService {
 
         console.log(`✅ Final result for "${haplogroup}" vs "${parentHaplogroup}": ${isSubcladeResult}`);
         return isSubcladeResult;
+    }
+
+    getSynonyms(haplogroupName) {
+        if (!this.yfullTree) {
+            return [haplogroupName];
+        }
+
+        // Extract SNP from haplogroup name
+        const snp = haplogroupName.includes('-')
+            ? haplogroupName.split('-').slice(1).join('-')
+            : haplogroupName;
+
+        const synonyms = this.yfullTree.getSynonymsForSnp(snp);
+        if (synonyms.length === 0) {
+            return [haplogroupName];
+        }
+
+        // Return synonyms with the base haplogroup prefix if present
+        const prefix = haplogroupName.includes('-')
+            ? haplogroupName.split('-')[0] + '-'
+            : '';
+
+        return synonyms.map(syn => prefix + syn);
+    }
+
+    // Check if two haplogroup names are synonyms (same branch in the tree)
+    areSynonyms(haplo1, haplo2) {
+        if (!this.yfullTree) {
+            return haplo1.toUpperCase() === haplo2.toUpperCase();
+        }
+        return this.yfullTree.areSameNode(haplo1, haplo2);
     }
 
     async getAllSubclades(parentHaplogroup) {

@@ -62,45 +62,39 @@ const {
 #### Интеграция с FTDNA Haplo
 ```typescript
 // Фильтрация по субкладам - критический функционал
+// Использование Batch API для оптимизации производительности
 const applyFilters = useCallback(async () => {
   if (!strMatches.length) return;
   
+  // 1. Сбор уникальных гаплогрупп
   const uniqueHaplogroups = [...new Set(
     strMatches.map(match => match.profile.haplogroup).filter(Boolean)
   )];
   
-  const filteredMatches = [];
-  
-  for (const match of strMatches) {
-    if (!match.profile.haplogroup) {
-      filteredMatches.push(match);
-      continue;
-    }
+  try {
+    // 2. Единый запрос для проверки всех гаплогрупп
+    const response = await fetch('/api/batch-check-subclades', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        haplogroups: uniqueHaplogroups,
+        parent: haplogroupFilter.includeGroups[0]
+      })
+    });
     
-    try {
-      const response = await fetch('/api/check-subclade', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          haplogroup: match.profile.haplogroup,
-          parentHaplogroup: haplogroupFilter.includeGroups[0],
-          showNonNegative: haplogroupFilter.includeSubclades
-        })
-      });
-      
-      const result = await response.json();
-      
-      if (result.isSubclade) {
-        filteredMatches.push(match);
-      }
-    } catch (error) {
-      console.error('Error checking subclade:', error);
-      // В случае ошибки включаем матч для безопасности
-      filteredMatches.push(match);
-    }
+    const { results } = await response.json();
+    
+    // 3. Фильтрация на клиента
+    const filteredMatches = strMatches.filter(match => {
+      if (!match.profile.haplogroup) return true;
+      return results[match.profile.haplogroup] === true;
+    });
+    
+    setFilteredByHaplogroup(filteredMatches);
+    
+  } catch (error) {
+    console.error('Error checking subclades:', error);
   }
-  
-  setFilteredByHaplogroup(filteredMatches);
 }, [strMatches, haplogroupFilter]);
 ```
 
@@ -370,95 +364,33 @@ const handleFindMatches = useCallback(async () => {
   setError(null);
   
   try {
-    // Создание Web Worker в рантайме
-    const workerCode = `
-      // Импорт необходимых функций
-      ${calculateGeneticDistance.toString()}
-      ${processMatches.toString()}
-      
-      self.onmessage = function(e) {
-        const { type, payload } = e.data;
-        
-        if (type === 'FIND_MATCHES') {
-          const matches = findMatches(payload);
-          self.postMessage({
-            type: 'MATCHES_FOUND',
-            payload: { matches }
-          });
-        }
-      };
-      
-      function findMatches(params) {
-        const { query, database, maxDistance, minMarkers, calculationMode } = params;
-        const matches = [];
-        
-        for (const profile of database) {
-          const distance = calculateGeneticDistance(
-            query.markers, 
-            profile.markers, 
-            calculationMode
-          );
-          
-          const sharedMarkers = countSharedMarkers(query.markers, profile.markers);
-          
-          if (distance <= maxDistance && sharedMarkers >= minMarkers) {
-            matches.push({
-              profile,
-              distance,
-              sharedMarkers,
-              differences: calculateDifferences(query.markers, profile.markers)
-            });
-          }
-          
-          // Early termination для производительности
-          if (matches.length >= 1000) break;
-        }
-        
-        return matches.sort((a, b) => a.distance - b.distance);
-      }
-    `;
-    
-    const blob = new Blob([workerCode], { type: 'application/javascript' });
-    const worker = new Worker(URL.createObjectURL(blob));
+    // Инициализация Web Worker из отдельного файла
+    const worker = new Worker(
+      new URL('../../workers/comparison.worker.ts', import.meta.url)
+    );
     
     worker.postMessage({
-      type: 'FIND_MATCHES',
+      type: 'START_COMPARISON',
       payload: {
-        query,
-        database,
-        maxDistance,
-        minMarkers: markerCount,
-        calculationMode
+        queryProfile: query,
+        databaseProfiles: database,
+        settings: {
+           maxDistance,
+           minMarkers: markerCount,
+           // ...
+        }
       }
     });
-    
+
     worker.onmessage = (event) => {
       const { type, payload } = event.data;
       
-      if (type === 'MATCHES_FOUND') {
-        setMatches(payload.matches);
-        setLoading(false);
-        
-        // Сохранение в историю поиска
-        const searchEntry = {
-          timestamp: Date.now(),
-          query: query.kitNumber,
-          resultsCount: payload.matches.length,
-          parameters: { maxDistance, minMarkers: markerCount, calculationMode }
-        };
-        
-        setSearchHistory(prev => [searchEntry, ...prev.slice(0, 9)]);
+      if (type === 'COMPARISON_COMPLETE') {
+         // Сохранение результатов и обновление UI
+         setMatches(payload.matches);
+         setLoading(false);
+         worker.terminate();
       }
-      
-      worker.terminate();
-      URL.revokeObjectURL(blob);
-    };
-    
-    worker.onerror = (error) => {
-      console.error('Worker error:', error);
-      setError('Error during STR matching calculation');
-      setLoading(false);
-      worker.terminate();
     };
     
   } catch (error) {
@@ -466,7 +398,49 @@ const handleFindMatches = useCallback(async () => {
     setError('Failed to find matches');
     setLoading(false);
   }
-}, [query, database, maxDistance, markerCount, calculationMode]);
+}, [query, database, maxDistance]);
+```
+
+#### Интеграция с FTDNA Haplo (Batch API)
+```typescript
+// Фильтрация по субкладам с использованием Batch API
+// (Решает проблему N+1 запросов)
+const applyFilters = useCallback(async () => {
+  if (!strMatches.length || !haplogroupFilter.active) return;
+  
+  setProcessingHaplo(true);
+  
+  try {
+    // 1. Извлекаем уникальные гаплогруппы из результатов
+    const uniqueHaplogroups = [...new Set(
+      strMatches.map(m => m.profile.haplogroup).filter(Boolean)
+    )];
+    
+    // 2. Отправляем ОДИН запрос на бэкенд
+    const response = await fetch('/api/batch-check-subclades', {
+      method: 'POST',
+      body: JSON.stringify({
+        haplogroups: uniqueHaplogroups,
+        parent: haplogroupFilter.parentHaplogroup
+      })
+    });
+    
+    const { results } = await response.json(); // Map<haplogroup, boolean>
+    
+    // 3. Фильтруем результаты в памяти
+    const filtered = strMatches.filter(match => {
+      const h = match.profile.haplogroup;
+      return !h || results[h] === true;
+    });
+    
+    setFilteredMatches(filtered);
+    
+  } catch (error) {
+    console.error('Batch filter error:', error);
+  } finally {
+    setProcessingHaplo(false);
+  }
+}, [strMatches, haplogroupFilter]);
 ```
 
 #### IndexedDB интеграция

@@ -8,24 +8,24 @@ const HaplogroupInfoPopup = ({ haplogroup, onClose }) => {
 
     useEffect(() => {
         const fetchHaplogroupPath = async () => {
-          try {
-            const response = await apiClient.get(`/haplogroup-path/${encodeURIComponent(haplogroup)}`);
+            try {
+                const response = await apiClient.get(`/haplogroup-path/${encodeURIComponent(haplogroup)}`);
 
-            if (!response.data.ftdnaDetails && !response.data.yfullDetails) {
-              throw new Error('No haplogroup data found');
+                if (!response.data.ftdnaDetails && !response.data.yfullDetails) {
+                    throw new Error('No haplogroup data found');
+                }
+
+                setResult(response.data);
+            } catch (err) {
+                console.error('Error fetching haplogroup path:', err);
+                setError(err instanceof Error ? err.message : 'Failed to load haplogroup path');
+            } finally {
+                setLoading(false);
             }
-
-            setResult(response.data);
-          } catch (err) {
-            console.error('Error fetching haplogroup path:', err);
-            setError(err instanceof Error ? err.message : 'Failed to load haplogroup path');
-          } finally {
-            setLoading(false);
-          }
         };
 
         fetchHaplogroupPath();
-      }, [haplogroup]);
+    }, [haplogroup]);
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -50,7 +50,7 @@ const HaplogroupInfoPopup = ({ haplogroup, onClose }) => {
                                     {result.ftdnaDetails.path.string}
                                 </p>
                                 <a
-                                    href={`https://discover.familytreedna.com/y-dna/${haplogroup}/tree`}
+                                    href={result.ftdnaDetails.url || `https://discover.familytreedna.com/y-dna/${haplogroup}/tree`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-sm text-blue-500 hover:underline mt-1 inline-block"
@@ -72,7 +72,7 @@ const HaplogroupInfoPopup = ({ haplogroup, onClose }) => {
                                     {result.yfullDetails.path.string}
                                 </p>
                                 <a
-                                    href={`https://www.yfull.com/tree/${haplogroup}/`}
+                                    href={result.yfullDetails.url || `https://www.yfull.com/tree/${haplogroup}/`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-sm text-green-500 hover:underline mt-1 inline-block"

@@ -248,3 +248,6 @@ nul
 scripts/upload_data.sql
 *.tar.gz
 load_log.txt
+
+# Private data
+private/

@@ -42,25 +42,65 @@ cd DNA-utils-universal
 # Корневые зависимости
 npm install
 
-# Зависимости всех подпроектов
-npm run install:all
+# Backend (Core Service)
+cd backend
+npm install
+cd ..
+
+# STR Matcher (Frontend)
+cd str-matcher
+npm install
+cd ..
+
+# FTDNA Haplo (Legacy Service)
+cd ftdna_haplo/server
+npm install
+cd ..
+
+# Haplo Client (Legacy Client)
+cd ftdna_haplo/client
+npm install
+cd ../..
 ```
 
 ### 3. Настройка окружения
 ```bash
 cp .env.example .env
-# Отредактируйте .env под ваши потребности
+# Отредактируйте .env:
+# BACKEND_PORT=9004
+# HAPLO_PORT=9003
+# FRONTEND_PORT=9002
 ```
 
 ### 4. Запуск системы
+
+Система состоит из 3-х сервисов:
+1. **Backend** (Port 9004) - Основной API и база данных.
+2. **STR Matcher** (Port 9002) - Основной Frontend.
+3. **Legacy Haplo** (Port 9003) - Справочник гаплогрупп.
+
+#### Вариант А: Запуск через корневой скрипт (если настроен)
 ```bash
 npm run dev
+# Примечание: Проверьте, что backend запустился. Если нет - см. Вариант Б.
 ```
 
-**Проверка работоспособности после оптимизаций** ⭐ НОВОЕ:
-- **STR Matcher**: http://localhost:9002 (должен загрузиться за < 3 секунд)
-- **FTDNA Haplo API**: http://localhost:9003/api/health
-- **Haplo Client**: http://localhost:5173
+#### Вариант Б: Ручной запуск (рекомендуется для отладки)
+```bash
+# Терминал 1: Backend
+cd backend && npm run dev
+
+# Терминал 2: Frontend
+cd str-matcher && npm run dev
+
+# Терминал 3: Legacy Service
+cd ftdna_haplo/server && npm run dev
+```
+
+**Проверка работоспособности**:
+- **Backend**: http://localhost:9004/health
+- **Frontend**: http://localhost:9002
+- **Legacy**: http://localhost:9003/api/health
 
 **Тестирование производительности** ⭐ НОВОЕ:
 1. Загрузите тестовый файл (включен в str-matcher/test-data-1.csv)
@@ -136,7 +176,7 @@ npm install
 cd ../..
 
 # FTDNA Haplo Client (React/Vite)
-cd ftdna_haplo/client
+cd ftdna_haplo/client  
 npm install
 cd ../..
 

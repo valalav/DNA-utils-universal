@@ -14,7 +14,33 @@
 
 В текущей версии API не требует аутентификации. Все эндпоинты доступны публично.
 
-## 📋 FTDNA Haplo API Endpoints
+
+### DNA-utils Backend (Port 9004)
+
+Core service for profile management and matching.
+
+#### `POST /api/profiles/find-matches`
+Find Y-STR matches for a given profile.
+**Body**:
+```json
+{
+  "markers": { "DYS393": "13", ... },
+  "maxDistance": 4,
+  "markerCount": 37
+}
+```
+
+#### `GET /api/profiles/:kitNumber`
+Get profile details by Kit Number.
+
+#### `POST /api/profiles/upload`
+Upload CSV/Excel file with profiles.
+
+---
+
+## 📋 FTDNA Haplo API Endpoints (Port 9003)
+
+Legacy service for haplogroup tree traversal and phylogeny.
 
 ### Health Check
 

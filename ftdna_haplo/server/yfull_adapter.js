@@ -101,9 +101,10 @@ class YFullAdapter {
     }
 
     findHaplogroup(term) {
-        const results = this.yfullTree.searchNodes(term);
-        if (results.length === 0) return null;
-        return this.convertNodeToFTDNAFormat(results[0].node);
+        // Use yfullTree.findHaplogroup which handles prefixes like "J-CTS1192" -> "CTS1192"
+        const node = this.yfullTree.findHaplogroup(term);
+        if (!node) return null;
+        return this.convertNodeToFTDNAFormat(node);
     }
 
     getHaplogroupDetails(haplogroupId) {
@@ -171,7 +172,15 @@ class YFullAdapter {
     }
 
     getAllSubclades(parentHaplogroupName) {
-        const parentNode = this.yfullTree.findNodeById(parentHaplogroupName);
+        // Try to find by ID first, then by SNP
+        let parentNode = this.yfullTree.findNodeById(parentHaplogroupName);
+        if (!parentNode) {
+            // Extract SNP from haplogroup name (e.g., "J-Z387" -> "Z387")
+            const snp = parentHaplogroupName.includes('-')
+                ? parentHaplogroupName.split('-').slice(1).join('-')
+                : parentHaplogroupName;
+            parentNode = this.yfullTree.findNodeBySnp(snp);
+        }
         if (!parentNode) {
             return [];
         }

@@ -1,220 +1,79 @@
-# Логика отображения маркеров в таблице совпадений
+# 🧬 Logic: Marker Display & Comparison
+*Up-to-date for v2.0 Client-Side Architecture*
 
-## Дата: 2025-10-07
+## 🎯 Overview
+The STR Matcher displays marker comparisons in the `MatchesTable` component. Unlike previous server-side versions, all logic for visibility, difference calculation, and rarity highlighting happens in the browser.
 
-## Принцип работы
+---
 
-Таблица показывает **только те маркеры, по которым есть различия** хотя бы у одного профиля в результатах поиска.
+## 👁️ Visibility Logic
+Which markers are shown as columns in the results table?
 
-### Примеры:
+### Rule: "Shared Presence"
+A marker column is displayed if:
+1.  **Query Profile** has a value for this marker.
+2.  **AND** at least one **Match Profile** in the results list has a value for this marker.
 
-#### Пример 1: Полное совпадение
-- **Query профиль**: 39666
-- **Match профиль**: 100000 (все маркеры совпадают)
-- **ГР = 0**
-- **Отображение**: Колонки с маркерами НЕ показываются (все совпадают)
-
-#### Пример 2: Одно различие
-- **Query профиль**: 39666
-- **Match профиль**: 100001 (отличается только DYS393)
-- **ГР = 1**
-- **Отображение**: Показывается только колонка DYS393 с различием
-
-#### Пример 3: Множественные совпадения
-- **Query профиль**: 39666
-- **Match профили**: 111288 (ГР=7), 144637 (ГР=10), 128043 (ГР=11)
-- **Отображение**: Показываются только те маркеры, по которым хотя бы один из профилей отличается от query
-
-### Проверка корректности
-
-**Важно:** Сумма различий по маркерам в строке должна совпадать со значением ГР для этого профиля.
-
-Для профиля 111288 (ГР=7):
-- CDY: 33-34 vs 33-37 → +2 (палиндром)
-- DYS449: 28 vs 27 → +1
-- DYS456: 16 vs 17 → +1
-- DYS458: 16 vs 17 → +1
-- DYS576: 18 vs 17 → +1
-- DYS389ii: 28 vs 29 → +1
-- **Сумма: 2+1+1+1+1+1 = 7** ✓
-
-## Расчёт генетической дистанции (ГР)
-
-### Режим Standard (текущий)
-
-Используется для фильтрации и отображения:
-
-1. **Обычные маркеры**: Разница ограничена до ±2
-   - Пример: DYS393: 13 vs 20 → расстояние = 2 (не 7)
-
-2. **Палиндромные маркеры** (CDY, DYS385, DYS459, DYS464, YCAII, etc):
-   - Каждый компонент ограничен до ±2
-   - Общая сумма тоже ограничена до 2
-   - Пример: CDY: 33-34 vs 33-37 → (0 + min(3,2)) → min(2, 2) = 2
-
-### SQL функции
-
-- `calculate_marker_distance(val1, val2)` - Standard mode (с ограничениями)
-- `calculate_marker_distance_extended(val1, val2)` - Extended mode (без ограничений, создана но не используется)
-
-### PostgreSQL функции
-
-- **v5**: `find_matches_batch_v5` - текущая версия
-  - Фильтрация по панелям маркеров (Y-STR12, Y-STR25, Y-STR37, Y-STR67, Y-STR111)
-  - Требование: профиль должен иметь ≥80% маркеров из выбранной панели
-  - Использует standard distance для фильтрации
-
-- **v6**: `find_matches_batch_v6` - экспериментальная (не используется)
-  - Возвращает два значения GD: standard и extended
-  - Не активирована из-за проблем с производительностью
-
-## Реализация в коде
-
-### Frontend: AdvancedMatchesTable.tsx
-
+*Source: `MatchesTable.tsx`*
 ```typescript
-// Получаем только маркеры с различиями
-const visibleMarkers = useMemo(() => {
-  if (!query) return [];
+const visibleMarkers = orderedMarkers.filter(marker => {
+  const queryValue = query?.markers[marker];
+  if (!queryValue) return false;
 
-  const queryMarkers = Object.keys(query.markers);
-
-  // ВСЕГДА показываем только маркеры с различиями
-  const relevantMarkers = queryMarkers.filter(marker => {
-    const queryValue = query.markers[marker];
-    // Показываем маркер только если он отличается хотя бы у одного профиля
-    return matches.some(match => {
-      const matchValue = match.profile?.markers[marker];
-      return matchValue && matchValue !== queryValue;
-    });
-  });
-
-  // Сортировка по COMMON_STR_MARKERS порядку
-  return relevantMarkers.sort(...);
-}, [query, matches]);
+  // Show if ANY match has this marker (even if value is same)
+  return matches.some(match => !!match.profile.markers[marker]);
+});
 ```
 
-### Backend: matchingService.js
+### User Control
+Results are initially filtered by standard panel sizes (12, 37, 67, 111 markers).
+*   **Hiding:** Users can manually remove a marker column by clicking the `×` header button. This triggers `markerOperations.removeMarker`, which updates the Query state to exclude that marker, forcing a table re-render and recalculation of Genetic Distance (GD).
 
-```javascript
-// Используем v5 функцию
-const query = `SELECT * FROM find_matches_batch_v5($1, $2, $3, $4, $5, $6)`;
+---
 
-const params = [
-  JSON.stringify(queryMarkers),
-  maxDistance,
-  maxResults,
-  markerCount,  // 12, 25, 37, 67, или 111
-  haplogroupFilter,
-  includeSubclades
-];
-```
+## 🧮 Difference Calculation
+Genetic Distance (GD) is calculated for each cell relative to the Query.
 
-### Database: optimized-v5-marker-panel-filter.sql
+**Algorithm:**
+*   **Standard:** `|Query - Match|`
+*   **Palindromic (Multi-copy):** Uses specific logic (e.g., Min-distance or Sum-distance) defined in `calculations.ts` / `palindromes` constant.
+*   **Stepwise Model:** Step-based mutations (Infinite Alleles Model is not used for display).
 
-```sql
--- Фильтрация профилей по панели маркеров
-WITH filtered_profiles AS (
-  SELECT
-    p.*,
-    (
-      SELECT COUNT(*)::INTEGER
-      FROM unnest(panel_markers) pm
-      WHERE p.markers->>pm IS NOT NULL AND p.markers->>pm != ''
-    ) as profile_panel_marker_count
-  FROM ystr_profiles p
-  WHERE p.markers ?& query_marker_keys
-),
-distances AS (
-  SELECT
-    fp.*,
-    (
-      SELECT SUM(calculate_marker_distance(query_markers->>k, fp.markers->>k))::INTEGER
-      FROM unnest(query_marker_keys) k
-      WHERE fp.markers->>k IS NOT NULL AND fp.markers->>k != ''
-    ) as distance
-  FROM filtered_profiles fp
-  -- КРИТИЧНО: только профили с ≥80% маркеров панели
-  WHERE fp.profile_panel_marker_count >= panel_min_threshold
-)
-SELECT * FROM distances
-WHERE distance <= max_distance
-ORDER BY distance ASC
-LIMIT max_results;
-```
+**Visual Indicators:**
+*   **Match (Diff = 0):** displayed as standard text (or rarity colored).
+*   **Difference (> 0):**
+    *   **Value:** `+X` or `-X` (relative to Query).
+    *   **Coloring:**
+        *   **Diff 1:** <span style="color:orange">Orange</span> (1-step mutation)
+        *   **Diff 2:** <span style="color:red">Red</span> (2-step)
+        *   **Diff 3+:** <span style="color:darkred">Dark Red</span> (Multi-step)
 
-## Панели маркеров
+---
 
-Таблица `marker_panels` содержит определения стандартных панелей:
+## 🎨 Rarity Highlighting
+Background colors indicate how rare a specific marker allele value is within the **current dataset** (visible matches).
 
-| panel_size | markers_count | description |
-|------------|---------------|-------------|
-| 12 | 12 | Y-STR12 базовая панель |
-| 25 | 25 | Y-STR25 расширенная |
-| 37 | 36 | Y-STR37 стандартная (на самом деле 36 маркеров) |
-| 67 | 67 | Y-STR67 большая |
-| 111 | 111 | Y-STR111 максимальная |
+**Calculation:**
+*   **Scope:** Calculated dynamically based on the *currently filtered* list of matches.
+*   **Formula:** `Frequency = (Count of Matches with Value X) / (Total Visible Matches)`
 
-### Требование 80%
+**Rarity Tiers:**
+| Frequency | Tier | Background Color |
+|:---|:---|:---|
+| > 25% | **Common** | White / Transparent |
+| ≤ 25% | **Uncommon** | 🟨 Yellow (Light) |
+| ≤ 15% | **Rare** | 🟧 Orange (Light) |
+| ≤ 8% | **Very Rare** | 🟧 Orange (Dark) |
+| ≤ 4% | **Extremely Rare**| 🟥 Red |
 
-Профиль включается в результаты только если имеет заполненными минимум 80% маркеров из выбранной панели:
+*Source: `MatchesTable.tsx` (useMemo `markerRarityCache`)*
 
-- Y-STR37 (36 маркеров): требуется ≥29 заполненных
-- Y-STR67 (67 маркеров): требуется ≥54 заполненных
-- Y-STR111 (111 маркеров): требуется ≥89 заполненных
+---
 
-## Кэширование
+## 🛠️ Components
+*   **`MatchesTable.tsx`:** Main component. Handles filtering, rendering lines, and calling calculation utils.
+*   **`calculation.ts`:** Core math. `calculateMarkerDifference`, `calculateGeneticDistance`.
+*   **`markerOperations.ts`:** State interactions (hiding/resetting markers).
 
-### Redis кэш
-- TTL: 1 час (3600 секунд)
-- Ключ: `match:${base64(query_params)}`
-- Очистка: автоматическая при bulk insert или вручную
-
-### Очистка кэша
-
-```bash
-docker exec ystr-backend node -e "const Redis = require('redis'); const client = Redis.createClient({url: 'redis://redis:6379'}); client.connect().then(async () => { const keys = await client.keys('match:*'); if (keys.length > 0) await client.del(keys); console.log('Cache cleared'); await client.quit(); });"
-```
-
-## Известные проблемы и решения
-
-### Проблема 1: Профили с малым количеством маркеров
-**Решено**: v5 функция фильтрует профили по правилу 80% панели
-
-### Проблема 2: Палиндромные маркеры считались неправильно
-**Решено**: Функция `calculate_marker_distance` корректно обрабатывает палиндромы с ограничениями
-
-### Проблема 3: Показывались все маркеры (102+)
-**Решено**: Теперь показываются только маркеры с различиями
-
-## Тестирование
-
-### Тест 1: Профиль с достаточным количеством маркеров
-```bash
-curl -X POST http://localhost:9004/api/profiles/find-matches \
-  -H "Content-Type: application/json" \
-  -d '{"markers":{"DYS393":"13"},"maxDistance":25,"maxResults":150,"markerCount":37}'
-```
-
-Результат: Профили с ≥29 маркерами из Y-STR37
-
-### Тест 2: Профиль с недостаточным количеством маркеров
-Профиль N75201 (11 маркеров) НЕ должен появляться в результатах при markerCount=37
-
-### Тест 3: Проверка GD
-```sql
-SELECT
-  'CDY' as marker,
-  '33-34' as query,
-  '33-37' as match,
-  calculate_marker_distance('33-34', '33-37') as distance;
-```
-
-Ожидаемый результат: distance = 2
-
-## История изменений
-
-- **2025-10-07**: Реализована логика отображения только различающихся маркеров
-- **2025-10-07**: Исправлен расчёт GD для палиндромов
-- **2025-10-07**: Добавлена фильтрация по панелям маркеров (v5)
-- **2025-10-07**: Исправлена проблема с профилями с малым количеством маркеров
+## 🚀 Future / Alternative Logic
+*   **Note:** An experimental component `AdvancedMatchesTable.tsx` implements a "Difference Only" view (hiding columns with 0 diffs), but it is currently **disabled** in favor of the standard full-haplotype view.

@@ -7,10 +7,11 @@
 ### Микросервисная архитектура
 ```
 DNA-utils-universal/
-├── str-matcher/          # Next.js Frontend (порт 9002) ⭐ ОПТИМИЗИРОВАН
-├── ftdna_haplo/         # Node.js Backend (порты 9003, 5173) ⭐ РАСШИРЕН
-├── ystr_predictor/      # Python ML Service (в разработке)
-└── docs/               # Документация
+├── backend/              # Express API + PostgreSQL Core (port 9004) ⭐ MAIN API
+├── str-matcher/          # Next.js Frontend (port 9002) ⭐ FRONTEND
+├── ftdna_haplo/          # Legacy Haplo Service (port 9003) ⭐ LEGACY/PROXY target
+├── ystr_predictor/       # Python ML Service (in development)
+└── docs/                 # Documentation
 ```
 
 ### Ключевые обновления августа 2025 ⭐ НОВОЕ

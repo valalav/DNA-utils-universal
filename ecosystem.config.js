@@ -1,27 +1,38 @@
 module.exports = {
   apps: [
+    // Backend API (Express) - порт 9005
+    {
+      name: "backend",
+      cwd: "./backend",
+      script: "./server.js",
+      env_production: {
+        NODE_ENV: "production",
+        PORT: 9005
+      }
+    },
+    // FTDNA Haplogroup Service - порт 9003
     {
       name: "ftdna-haplo-app",
       cwd: "./ftdna_haplo",
       script: "./server/server.js",
+      exec_mode: "fork",
       env_production: {
         NODE_ENV: "production",
         PORT: 9003,
         API_PATH: "/api",
-        // В продакшене укажите здесь дополнительные домены если нужно, например "https://your-domain.com"
-        // Порт 9002 разрешен автоматически логикой CORS
-        ALLOWED_ORIGINS: ""
+        ALLOWED_ORIGINS: "https://pystr.valalav.ru"
       }
     },
+    // Next.js Frontend - порт 3000 (nginx проксирует сюда)
+    // ВАЖНО: используем standalone build (output: 'standalone' в next.config.js)
     {
       name: "str-matcher-app",
       cwd: "./str-matcher",
-      // Прямой вызов бинарного файла Next.js - это надежный кроссплатформенный способ
-      script: "./node_modules/next/dist/bin/next",
-      args: "start -p 9002",
+      script: "./.next/standalone/server.js",
       env_production: {
         NODE_ENV: "production",
-        // Указываем, где находится API для проксирования
+        PORT: 3000,
+        HOSTNAME: "0.0.0.0",
         HAPLO_API_URL: "http://localhost:9003"
       }
     }

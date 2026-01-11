@@ -12,6 +12,7 @@ const HaplogroupService = require('./services/haplogroup-service');
 
 const app = express();
 const PORT = process.env.PORT;
+
 const API_PATH = process.env.API_PATH || '/api';
 
 // Define base directory for the application
@@ -28,13 +29,13 @@ try {
     if (!fs.existsSync(dataDir)) {
         throw new Error(`Data directory not found: ${dataDir}. Please ensure the 'data' directory with 'get.json' and 'ytree.json' exists.`);
     }
-    
+
     const ftdnaPath = path.join(dataDir, 'get.json');
     const yfullPath = path.join(dataDir, 'ytree.json');
-    
+
     console.log('Loading FTDNA data from:', ftdnaPath);
     console.log('Loading YFull data from:', yfullPath);
-    
+
     // Проверяем существование файлов
     if (!fs.existsSync(ftdnaPath)) {
         throw new Error(`FTDNA data file not found: ${ftdnaPath}`);
@@ -42,22 +43,22 @@ try {
     if (!fs.existsSync(yfullPath)) {
         throw new Error(`YFull data file not found: ${yfullPath}`);
     }
-    
+
     const ftdnaData = JSON.parse(fs.readFileSync(ftdnaPath, 'utf8'));
     const yfullData = JSON.parse(fs.readFileSync(yfullPath, 'utf8'));
-    
+
     console.log('Data files loaded, initializing services...');
-    
+
     const ftdnaTree = new HaploTree(ftdnaData);
     const yfullTree = new YFullAdapter(yfullData);
     const searchIntegrator = new SearchIntegrator(ftdnaTree, yfullTree);
-    
+
     haplogroupService = new HaplogroupService(ftdnaTree, yfullTree, searchIntegrator);
     console.log('✅ Trees loaded successfully');
 } catch (error) {
     console.error('❌ Error loading trees:', error.message);
     console.error('Stack trace:', error.stack);
-    
+
     // Не завершаем процесс, а создаем заглушку сервиса
     console.log('⚠️  Starting server without haplogroup service...');
     haplogroupService = null;
@@ -84,26 +85,34 @@ const corsOptions = {
         // Парсим origin для проверки
         try {
             const originUrl = new URL(origin);
-            
+
             // Разрешаем запросы на порт 9002 с любого IP
             if (originUrl.port === '9002') {
                 console.log(`CORS: Allowing request from str-matcher on ${originUrl.hostname}:9002`);
                 return callback(null, true);
             }
-            
+
+            // ALLOW LOCAL NETWORK REQUESTS (Universal Fix for self-hosting)
+            if (originUrl.hostname === 'localhost' ||
+                originUrl.hostname.startsWith('192.168.') ||
+                originUrl.hostname.startsWith('100.')) {
+                console.log(`CORS: Allowing local/VPN request from: ${origin}`);
+                return callback(null, true);
+            }
+
             // Дополнительно проверяем список разрешенных origins из переменной окружения
             const allowedOriginsStr = process.env.ALLOWED_ORIGINS || '';
             const allowedOrigins = allowedOriginsStr.split(',').filter(Boolean);
-            
+
             if (allowedOrigins.includes(origin)) {
                 console.log(`CORS: Allowing request from explicitly allowed origin: ${origin}`);
                 return callback(null, true);
             }
-            
+
             // Блокируем все остальные запросы
             console.warn(`CORS: Blocking request from disallowed origin: ${origin}`);
             return callback(new Error(`CORS policy does not allow access from origin: ${origin}`));
-            
+
         } catch (error) {
             console.error(`CORS: Invalid origin format: ${origin}`);
             return callback(new Error(`CORS policy does not allow access from invalid origin: ${origin}`));
@@ -121,7 +130,22 @@ const apiRouter = express.Router();
 
 // All API routes will be prefixed with API_PATH
 apiRouter.get(`/health`, (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    const memoryUsage = process.memoryUsage();
+    const status = {
+        status: haplogroupService ? 'ok' : 'degraded',
+        timestamp: new Date().toISOString(),
+        service: {
+            haplogroupService: haplogroupService ? 'available' : 'unavailable'
+        },
+        memory: {
+            heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024) + 'MB',
+            heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024) + 'MB',
+            rss: Math.round(memoryUsage.rss / 1024 / 1024) + 'MB'
+        }
+    };
+
+    const httpStatus = haplogroupService ? 200 : 503;
+    res.status(httpStatus).json(status);
 });
 
 apiRouter.get(`/search/:haplogroup`, async (req, res) => {
@@ -132,16 +156,16 @@ apiRouter.get(`/search/:haplogroup`, async (req, res) => {
                 details: 'Service failed to initialize'
             });
         }
-        
+
         const result = await haplogroupService.searchHaplogroup(req.params.haplogroup);
-        
+
         console.log('Search result:', {
             haplogroup: req.params.haplogroup,
             hasData: !!result,
             hasFtdna: !!result?.ftdna,
             hasYfull: !!result?.yfull
         });
-        
+
         if (!result || (!result.ftdna && !result.yfull)) {
             return res.status(404).json({
                 error: `Haplogroup ${req.params.haplogroup} not found`,
@@ -156,7 +180,7 @@ apiRouter.get(`/search/:haplogroup`, async (req, res) => {
         });
     } catch (error) {
         console.error('Error in search:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: error.message,
             stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
@@ -171,16 +195,16 @@ apiRouter.get(`/haplogroup-path/:haplogroup`, async (req, res) => {
                 details: 'Service failed to initialize'
             });
         }
-        
+
         const result = await haplogroupService.searchHaplogroup(req.params.haplogroup);
-        
+
         console.log('Search result:', {
             haplogroup: req.params.haplogroup,
             hasData: !!result,
             hasFtdna: !!result?.ftdna,
             hasYfull: !!result?.yfull
         });
-        
+
         if (!result || (!result.ftdna && !result.yfull)) {
             return res.status(404).json({
                 error: `Haplogroup ${req.params.haplogroup} not found`,
@@ -195,7 +219,7 @@ apiRouter.get(`/haplogroup-path/:haplogroup`, async (req, res) => {
         });
     } catch (error) {
         console.error('Error in haplogroup-path:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: error.message,
             stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
@@ -204,43 +228,43 @@ apiRouter.get(`/haplogroup-path/:haplogroup`, async (req, res) => {
 
 apiRouter.post(`/check-subclade`, async (req, res) => {
     console.log('🔍 check-subclade endpoint called');
-    
+
     try {
         const { haplogroup, parentHaplogroup } = req.body;
         console.log('Request body:', { haplogroup, parentHaplogroup });
-        
+
         if (!haplogroup || !parentHaplogroup) {
             console.log('❌ Missing parameters');
             return res.json({ isSubclade: false });
         }
-        
+
         if (!haplogroupService) {
-            console.log('⚠️ Haplogroup service not available, using fallback logic');
-            
+            console.log('⚠️  Haplogroup service not available, using fallback logic');
+
             // Простая логика: если строки одинаковые или haplogroup начинается с parentHaplogroup
             const isSubclade = haplogroup === parentHaplogroup || haplogroup.startsWith(parentHaplogroup);
             console.log(`✅ Fallback check: "${haplogroup}" vs "${parentHaplogroup}" = ${isSubclade}`);
-            
+
             return res.json({ isSubclade });
         }
-        
+
         console.log('🔧 Using haplogroupService.checkSubclade...');
         const isSubcladeResult = await haplogroupService.checkSubclade(
             haplogroup,
             parentHaplogroup
         );
-        
+
         console.log('✅ Service result:', isSubcladeResult);
         res.json({ isSubclade: isSubcladeResult });
     } catch (error) {
         console.error('❌ Error in check-subclade:', error);
         console.error('Stack trace:', error.stack);
-        
+
         // Fallback на простую логику
         const { haplogroup, parentHaplogroup } = req.body;
         const isSubclade = haplogroup === parentHaplogroup || (haplogroup && parentHaplogroup && haplogroup.startsWith(parentHaplogroup));
         console.log(`🚨 Error fallback: "${haplogroup}" vs "${parentHaplogroup}" = ${isSubclade}`);
-        
+
         res.json({ isSubclade });
     }
 });
@@ -248,11 +272,11 @@ apiRouter.post(`/check-subclade`, async (req, res) => {
 // Batch API для проверки множественных субкладов
 apiRouter.post(`/batch-check-subclades`, async (req, res) => {
     console.log('🔍 batch-check-subclades endpoint called');
-    
+
     try {
         const { haplogroups, parentHaplogroups } = req.body;
         console.log('Request body:', JSON.stringify(req.body, null, 2));
-        
+
         if (!Array.isArray(haplogroups) || !Array.isArray(parentHaplogroups)) {
             console.log('❌ Invalid request format');
             return res.status(400).json({
@@ -263,38 +287,38 @@ apiRouter.post(`/batch-check-subclades`, async (req, res) => {
         console.log(`🚀 Batch checking ${haplogroups.length} haplogroups against ${parentHaplogroups.length} parents`);
 
         const results = {};
-        
+
         // Use haplogroupService if available, otherwise fallback
         if (!haplogroupService) { // Use fallback only if service not available
             console.log('⚠️ Using fallback logic for batch (haplogroupService disabled due to issues)');
-            
+
             // Fallback логика для batch
             for (const haplogroup of haplogroups) {
                 let isMatch = false;
-                
+
                 for (const parentHaplogroup of parentHaplogroups) {
                     if (haplogroup === parentHaplogroup || (haplogroup && haplogroup.startsWith(parentHaplogroup))) {
                         isMatch = true;
                         break;
                     }
                 }
-                
+
                 results[haplogroup] = isMatch;
             }
         } else {
             console.log('🔧 Using haplogroupService for batch...');
-            
+
             // Проверяем каждую гаплогруппу против всех родительских
             for (const haplogroup of haplogroups) {
                 let isMatch = false;
-                
+
                 for (const parentHaplogroup of parentHaplogroups) {
                     try {
                         const isSubcladeResult = await haplogroupService.checkSubclade(
                             haplogroup,
                             parentHaplogroup
                         );
-                        
+
                         if (isSubcladeResult) {
                             isMatch = true;
                             break; // Если найдено совпадение, не нужно проверять остальные
@@ -308,37 +332,37 @@ apiRouter.post(`/batch-check-subclades`, async (req, res) => {
                         }
                     }
                 }
-                
+
                 results[haplogroup] = isMatch;
             }
         }
 
         console.log(`✅ Batch check completed: ${Object.values(results).filter(Boolean).length}/${haplogroups.length} matches`);
-        
+
         res.json({ results });
     } catch (error) {
         console.error('❌ Error in batch-check-subclades:', error);
         console.error('Stack trace:', error.stack);
-        
+
         // Полный fallback
         const { haplogroups, parentHaplogroups } = req.body;
         const results = {};
-        
+
         if (Array.isArray(haplogroups) && Array.isArray(parentHaplogroups)) {
             for (const haplogroup of haplogroups) {
                 let isMatch = false;
-                
+
                 for (const parentHaplogroup of parentHaplogroups) {
-                    if (haplogroup === parentHaplogroup || (haplogroup && haplogroup.startsWith(parentHaplogroup))) {
+                    if (haplogroup === parentHaplogroup || (haplogroup && parentHaplogroup && haplogroup.startsWith(parentHaplogroup))) {
                         isMatch = true;
                         break;
                     }
                 }
-                
+
                 results[haplogroup] = isMatch;
             }
         }
-        
+
         console.log(`🚨 Error fallback batch completed: ${Object.values(results).filter(Boolean).length}/${haplogroups?.length || 0} matches`);
         res.json({ results });
     }
@@ -357,7 +381,7 @@ apiRouter.get(`/autocomplete`, async (req, res) => {
                 details: 'Service failed to initialize'
             });
         }
-        
+
         const ftdnaResults = haplogroupService.ftdnaTree.searchWithAutocomplete(term);
         const yfullResults = haplogroupService.yfullTree.searchWithAutocomplete(term);
 
@@ -389,10 +413,73 @@ apiRouter.get(`/autocomplete`, async (req, res) => {
             }
         }
 
+        // SNAP TO EXACT LOGIC
+        // Если есть точное совпадение, возвращаем только его
+        const upperTerm = term.toUpperCase();
+        const exactMatch = results.find(r => r.value.toUpperCase() === upperTerm);
+
+        if (exactMatch) {
+            console.log(`🔍 Exact match found for "${term}": ${exactMatch.value}`);
+            return res.json([exactMatch]);
+        }
+
         res.json(results.slice(0, parseInt(req.query.limit) || 10));
     } catch (error) {
         console.error('Error in autocomplete:', error);
         res.status(500).json({ error: error.message });
+    }
+});
+
+// Get all synonyms for a haplogroup (different SNP names for the same branch)
+apiRouter.get(`/synonyms/:haplogroup`, async (req, res) => {
+    try {
+        if (!haplogroupService) {
+            return res.status(503).json({
+                error: 'Haplogroup service not available',
+                details: 'Service failed to initialize'
+            });
+        }
+
+        const synonyms = haplogroupService.getSynonyms(req.params.haplogroup);
+
+        res.json({
+            haplogroup: req.params.haplogroup,
+            synonyms: synonyms
+        });
+    } catch (error) {
+        console.error('Error in synonyms endpoint:', error);
+        res.status(500).json({
+            error: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
+    }
+});
+
+// Check if two haplogroups are synonyms (same branch in the tree)
+apiRouter.post(`/check-synonyms`, async (req, res) => {
+    try {
+        const { haplogroup1, haplogroup2 } = req.body;
+
+        if (!haplogroup1 || !haplogroup2) {
+            return res.json({ areSynonyms: false });
+        }
+
+        if (!haplogroupService) {
+            // Fallback: simple string comparison
+            const areSynonyms = haplogroup1.toUpperCase() === haplogroup2.toUpperCase();
+            return res.json({ areSynonyms });
+        }
+
+        const areSynonyms = haplogroupService.areSynonyms(haplogroup1, haplogroup2);
+
+        res.json({
+            haplogroup1,
+            haplogroup2,
+            areSynonyms
+        });
+    } catch (error) {
+        console.error('Error in check-synonyms endpoint:', error);
+        res.json({ areSynonyms: false });
     }
 });
 
@@ -404,9 +491,9 @@ apiRouter.get(`/subclades/:haplogroup`, async (req, res) => {
                 details: 'Service failed to initialize'
             });
         }
-        
+
         const subclades = await haplogroupService.getAllSubclades(req.params.haplogroup);
-        
+
         if (!subclades || subclades.length === 0) {
             return res.status(404).json({
                 error: `No subclades found for ${req.params.haplogroup}`,
@@ -445,10 +532,28 @@ app.get('*', (req, res) => {
     }
 });
 
-
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`Serving API at ${API_PATH}`);
     console.log(`Serving client from ${clientBuildPath}`);
 });
+
+// Graceful shutdown handler
+function gracefulShutdown(signal) {
+    console.log(`\n${signal} received. Shutting down gracefully...`);
+
+    server.close(() => {
+        console.log('HTTP server closed.');
+        process.exit(0);
+    });
+
+    // Force exit after 10 seconds if graceful shutdown fails
+    setTimeout(() => {
+        console.error('Forced shutdown after timeout');
+        process.exit(1);
+    }, 10000);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

@@ -1,49 +1,43 @@
-# Data Import Guide
-## Руководство по импорту CSV данных в PostgreSQL
+# 🗄️ Data Management Guide
+
+## 🌐 Overview
+DNA-utils-universal использует **гибридную модель данных**:
+1.  **Client-Side (Frontend):** Пользователь загружает файлы локально в браузер (IndexedDB). Данные не покидают устройство.
+2.  **Server-Side (Backend):** Глобальная база данных (PostgreSQL) для поиска по миллионам профилей.
 
 ---
 
-## 📊 Доступные источники данных
+## 🖥️ 1. Client-Side Data (Frontend)
+*Для обычных пользователей*
 
-### CSV Files (в `scripts/downloads/`)
+### Поддерживаемые форматы
+*   **CSV (FTDNA/YFull):** Стандартный формат экспорта.
+*   **Repo JSON:** Специальный формат репозиториев проекта.
 
-| Файл | Размер | Гаплогруппа | Примерное кол-во профилей |
-|------|--------|-------------|---------------------------|
-| `I.csv` | 16 MB | I | ~40,000 |
-| `r1a.csv` | 6.9 MB | R1a | ~18,000 |
-| `E.csv` | 5.9 MB | E | ~15,000 |
-| `Others.csv` | 5.5 MB | Others | ~14,000 |
-| `J2.csv` | 5.0 MB | J2 | ~13,000 |
-| `J1.csv` | 4.8 MB | J1 | ~12,000 |
-| `G.csv` | 3.2 MB | G | ~8,000 |
-| `aadna.csv` | 0 KB | AADNA | 0 (пустой) |
-| `Genopoisk.csv` | 16 KB | Mixed | ~40 |
-| **ИТОГО** | **~47 MB** | **Mixed** | **~120,000** |
+### Как загрузить данные
+1.  Откройте приложение (`http://localhost:3000` или `https://...`).
+2.  Нажмите **"Load/Manage Database"** в навигации.
+3.  Перетащите файлы CSV в область загрузки.
+4.  Данные сохраняются в `IndexedDB` браузера и доступны оффлайн.
 
-### Google Sheets Sources
-
-Все CSV можно обновить через API (определены в `str-matcher/src/config/repositories.config.ts`):
-
-- **AADNA.ru**: https://docs.google.com/spreadsheets/.../output=csv
-- **R1a**: https://docs.google.com/spreadsheets/.../output=csv
-- **E, G, I, J1, J2, Others**: аналогично
-
-### R1b Database (Chunked JSON)
-
-R1b - самая большая база (~50,000+ профилей), хранится в chunked JSON формате:
-- `/public/chunk_0.json` through `/public/chunk_15.json`
-- 16 чанков
-- Требует специальной обработки
+### Ограничения
+*   **Память:** Рекомендуется до 500k профилей (ограничение браузера).
+*   **Персистентность:** Данные удаляются при очистке кэша браузера.
 
 ---
 
-## 🏗️ Стратегия импорта
+## ☁️ 2. Server-Side Data (Backend)
+*Для администраторов сервера*
 
-### Этап 1: Подготовка БД
+Бэкенд использует PostgreSQL для хранения глобальной базы данных. Импорт осуществляется через скрипты или API.
 
+### 📋 Prerequisites: Schema Setup
+Так как автоматические миграции могут быть отключены, убедитесь, что схема базы данных инициализирована.
+
+**Required SQL Schema:**
 ```sql
--- 1. Создать таблицу метаданных
-CREATE TABLE haplogroup_databases (
+-- Таблица метаданных импорта
+CREATE TABLE IF NOT EXISTS haplogroup_databases (
     id SERIAL PRIMARY KEY,
     haplogroup VARCHAR(50) NOT NULL UNIQUE,
     total_profiles INTEGER DEFAULT 0,
@@ -55,400 +49,134 @@ CREATE TABLE haplogroup_databases (
     file_size_mb DECIMAL(10,2),
     description TEXT
 );
+
+-- Таблица профилей (упрощено)
+CREATE TABLE IF NOT EXISTS ystr_profiles (
+    id SERIAL PRIMARY KEY,
+    kit_number VARCHAR(50),
+    name VARCHAR(255),
+    country VARCHAR(100),
+    haplogroup VARCHAR(50),
+    markers JSONB, -- Хранение маркеров как JSON
+    str_values INTEGER[], -- Для GIST индекса (опционально)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Функция для batch insert (используется скриптами)
+CREATE OR REPLACE FUNCTION bulk_insert_profiles(profiles_json JSONB)
+RETURNS TABLE(bulk_insert_profiles BIGINT) AS $$
+DECLARE
+    count BIGINT;
+BEGIN
+    WITH inserted AS (
+        INSERT INTO ystr_profiles (kit_number, name, country, haplogroup, markers)
+        SELECT 
+            p->>'kit_number',
+            p->>'name',
+            p->>'country',
+            p->>'haplogroup',
+            p->'markers'
+        FROM jsonb_array_elements(profiles_json) AS p
+        ON CONFLICT DO NOTHING -- Игнорировать дубликаты
+        RETURNING 1
+    )
+    SELECT COUNT(*) INTO count FROM inserted;
+    
+    RETURN QUERY SELECT count;
+END;
+$$ LANGUAGE plpgsql;
 ```
 
-### Этап 2: Импорт маленьких баз (для тестирования)
+### 🚀 Import Procedures
 
-Начнём с самых маленьких баз для отладки процесса:
+#### Метод А: Automatic Load (Default DB)
+Загружает данные из публичного Google Sheet "Database 2024".
 
-1. **Genopoisk.csv** (16 KB, ~40 профилей)
-2. **G.csv** (3.2 MB, ~8,000 профилей)
-3. **J1.csv** (4.8 MB, ~12,000 профилей)
+```bash
+# Использование npm скрипта
+npm run db:load
 
-**Скрипт импорта:**
-```javascript
-// backend/scripts/import-csv-to-postgres.js
-const fs = require('fs');
-const Papa = require('papaparse');
-const { pool } = require('../config/database');
+# Прямой вызов
+node backend/scripts/load-default-db.js
+```
+*Требует настройки `MASTER_API_KEY` в `.env`.*
 
-async function importCSV(filePath, haplogroup) {
-  console.log(`Importing ${filePath}...`);
+#### Метод Б: Manual CSV Import
+Импорт локальных CSV файлов напрямую в PostgreSQL (High Performance).
 
-  const csvContent = fs.readFileSync(filePath, 'utf-8');
-  const parseResult = Papa.parse(csvContent, {
-    header: true,
-    skipEmptyLines: true
-  });
-
-  // Transform to profile objects
-  const profiles = parseResult.data.map(row => ({
-    kitNumber: row.kitNumber || row.kit_number || row.KitNumber,
-    name: row.name || row.Name || '',
-    country: row.country || row.Country || '',
-    haplogroup: row.haplogroup || row.Haplogroup || haplogroup,
-    markers: extractMarkers(row)
-  })).filter(p => p.kitNumber && Object.keys(p.markers).length > 0);
-
-  console.log(`Found ${profiles.length} valid profiles`);
-
-  // Bulk insert in batches of 5000
-  const batchSize = 5000;
-  let inserted = 0;
-
-  for (let i = 0; i < profiles.length; i += batchSize) {
-    const batch = profiles.slice(i, i + batchSize);
-    const result = await pool.query(
-      'SELECT bulk_insert_profiles($1)',
-      [JSON.stringify(batch)]
-    );
-    inserted += result.rows[0].bulk_insert_profiles;
-    console.log(`Progress: ${inserted}/${profiles.length}`);
-  }
-
-  console.log(`✅ Imported ${inserted} profiles`);
-  return inserted;
-}
-
-function extractMarkers(row) {
-  const markers = {};
-  const excludeKeys = ['kitnumber', 'kit_number', 'name', 'country', 'haplogroup'];
-
-  Object.keys(row).forEach(key => {
-    if (!excludeKeys.includes(key.toLowerCase()) && row[key] && row[key] !== '') {
-      markers[key] = row[key];
-    }
-  });
-
-  return markers;
-}
-
-// Usage
-importCSV('./scripts/downloads/Genopoisk.csv', 'Mixed').then(() => process.exit(0));
+**Команда:**
+```bash
+node backend/scripts/import-csv-to-postgres.js \
+  --file=./downloads/I.csv \
+  --haplogroup=I \
+  --batch-size=5000
 ```
 
-### Этап 3: Импорт средних баз
-
-После успешного тестирования на малых данных:
-
-4. **J2.csv** (5.0 MB, ~13,000 профилей)
-5. **Others.csv** (5.5 MB, ~14,000 профилей)
-6. **E.csv** (5.9 MB, ~15,000 профилей)
-
-### Этап 4: Импорт больших баз
-
-Самые большие базы требуют оптимизации:
-
-7. **r1a.csv** (6.9 MB, ~18,000 профилей)
-8. **I.csv** (16 MB, ~40,000 профилей)
-
-**Оптимизации для больших импортов:**
-- Отключить триггеры (`ALTER TABLE ystr_profiles DISABLE TRIGGER ALL`)
-- Увеличить `work_mem` и `maintenance_work_mem`
-- Использовать `COPY` вместо `INSERT` (быстрее в 10 раз)
-- Создать индексы ПОСЛЕ импорта
-
-### Этап 5: R1b Chunked JSON
-
-R1b требует специального обработчика:
-
-```javascript
-// backend/scripts/import-r1b-chunks.js
-async function importR1bChunks() {
-  const totalChunks = 16;
-  let totalProfiles = 0;
-
-  for (let i = 0; i < totalChunks; i++) {
-    const chunkPath = `./public/chunk_${i}.json`;
-    const chunkData = JSON.parse(fs.readFileSync(chunkPath, 'utf-8'));
-
-    // Convert JSON to profile format
-    const profiles = chunkData.map(item => ({
-      kitNumber: item.id || item.kitNumber,
-      name: item.name || '',
-      country: item.country || '',
-      haplogroup: item.haplogroup || 'R1b',
-      markers: item.markers || {}
-    }));
-
-    const inserted = await bulkInsert(profiles);
-    totalProfiles += inserted;
-    console.log(`Chunk ${i + 1}/${totalChunks}: ${inserted} profiles (total: ${totalProfiles})`);
-  }
-
-  return totalProfiles;
-}
-```
+**Опции:**
+*   `--file`: Путь к файлу.
+*   `--haplogroup`: Присваиваемая гаплогруппа.
+*   `--dry-run`: Прогон без записи в БД.
+*   `--skip-validation`: Отключение проверок валидности.
 
 ---
 
-## 📋 Пошаговый план импорта
+## 🛠️ Troubleshooting
 
-### День 1: Настройка и тестирование
+### "Connection Refused" (Backend)
+Убедитесь, что PostgreSQL запущен и переменные окружения в `backend/.env` корректны (`DATABASE_URL` или `DB_HOST`/`DB_USER`...).
 
-```bash
-# 1. Убедиться что PostgreSQL запущен
-psql -U postgres -c "SELECT version();"
+### "Api Key Missing" (Load Default)
+Скрипт `load-default-db.js` использует API endpoint. Убедитесь, что сервер запущен (`npm run dev`) и ключ `MASTER_API_KEY` совпадает в клиенте и сервере.
 
-# 2. Создать базу данных (если не существует)
-psql -U postgres -c "CREATE DATABASE ystr_matcher;"
-
-# 3. Применить схему
-psql -U postgres -d ystr_matcher -f database/schema.sql
-
-# 4. Создать таблицу метаданных
-psql -U postgres -d ystr_matcher -f database/haplogroup-databases-table.sql
-
-# 5. Тестовый импорт (Genopoisk - 40 профилей)
-node backend/scripts/import-csv-to-postgres.js --file=scripts/downloads/Genopoisk.csv --haplogroup=Mixed
-
-# 6. Проверить результат
-psql -U postgres -d ystr_matcher -c "SELECT COUNT(*) FROM ystr_profiles;"
-```
-
-### День 2: Импорт малых и средних баз
-
-```bash
-# Импорт G (8k profiles)
-node backend/scripts/import-csv-to-postgres.js --file=scripts/downloads/G.csv --haplogroup=G
-
-# Импорт J1 (12k profiles)
-node backend/scripts/import-csv-to-postgres.js --file=scripts/downloads/J1.csv --haplogroup=J1
-
-# Импорт J2 (13k profiles)
-node backend/scripts/import-csv-to-postgres.js --file=scripts/downloads/J2.csv --haplogroup=J2
-
-# Импорт E (15k profiles)
-node backend/scripts/import-csv-to-postgres.js --file=scripts/downloads/E.csv --haplogroup=E
-
-# Импорт Others (14k profiles)
-node backend/scripts/import-csv-to-postgres.js --file=scripts/downloads/Others.csv --haplogroup=Others
-
-# Проверить общий прогресс
-psql -U postgres -d ystr_matcher -c "SELECT haplogroup, COUNT(*) as count FROM ystr_profiles GROUP BY haplogroup;"
-```
-
-### День 3: Импорт больших баз
-
-```bash
-# Подготовка для больших импортов
-psql -U postgres -d ystr_matcher <<EOF
-ALTER TABLE ystr_profiles DISABLE TRIGGER ALL;
-SET work_mem = '256MB';
-SET maintenance_work_mem = '1GB';
-EOF
-
-# Импорт r1a (18k profiles)
-node backend/scripts/import-csv-to-postgres.js --file=scripts/downloads/r1a.csv --haplogroup=R1a
-
-# Импорт I (40k profiles)
-node backend/scripts/import-csv-to-postgres.js --file=scripts/downloads/I.csv --haplogroup=I
-
-# Включить триггеры обратно
-psql -U postgres -d ystr_matcher -c "ALTER TABLE ystr_profiles ENABLE TRIGGER ALL;"
-
-# Создать индексы
-psql -U postgres -d ystr_matcher -c "REINDEX TABLE ystr_profiles;"
-psql -U postgres -d ystr_matcher -c "REFRESH MATERIALIZED VIEW marker_statistics;"
-```
-
-### День 4: R1b и финализация
-
-```bash
-# Импорт R1b chunks (50k+ profiles)
-node backend/scripts/import-r1b-chunks.js
-
-# Финальная проверка
-psql -U postgres -d ystr_matcher <<EOF
-SELECT
-    haplogroup,
-    COUNT(*) as profiles,
-    AVG((SELECT COUNT(*) FROM jsonb_object_keys(markers))) as avg_markers
-FROM ystr_profiles
-GROUP BY haplogroup
-ORDER BY profiles DESC;
-
-SELECT COUNT(*) as total_profiles FROM ystr_profiles;
-EOF
-
-# Оптимизация БД
-psql -U postgres -d ystr_matcher -c "VACUUM ANALYZE ystr_profiles;"
-```
+### "Table not found"
+Выполните SQL Schema setup вручную через `psql`, если миграции не отработали.
 
 ---
 
-## ⚡ Оптимизации производительности
+## 🔥 Appendix: Mass Import Script (Bash)
 
-### PostgreSQL Settings
+Для импорта всех баз одной командой используйте этот скрипт:
+
+```bash
+#!/bin/bash
+# scripts/import-all-databases.sh
+
+DATABASES=(
+  "Genopoisk.csv:Mixed"
+  "G.csv:G"
+  "J1.csv:J1"
+  "J2.csv:J2"
+  "E.csv:E"
+  "Others.csv:Others"
+  "r1a.csv:R1a"
+  "I.csv:I"
+)
+
+cd backend
+
+for entry in "${DATABASES[@]}"; do
+  IFS=':' read -r file haplogroup <<< "$entry"
+  echo "Importing $haplogroup from $file..."
+  
+  node scripts/import-csv-to-postgres.js \
+    --file="../scripts/downloads/$file" \
+    --haplogroup="$haplogroup"
+    
+  if [ $? -ne 0 ]; then
+    echo "❌ Failed to import $haplogroup"
+    exit 1
+  fi
+done
+
+echo "✅ All databases imported!"
+```
+
+## 🧪 Verification
+Проверьте статус импорта через SQL:
 
 ```sql
--- Для импорта больших данных
-ALTER SYSTEM SET shared_buffers = '2GB';
-ALTER SYSTEM SET effective_cache_size = '6GB';
-ALTER SYSTEM SET work_mem = '256MB';
-ALTER SYSTEM SET maintenance_work_mem = '1GB';
-ALTER SYSTEM SET max_worker_processes = 8;
-ALTER SYSTEM SET max_parallel_workers = 8;
-
--- Перезапустить PostgreSQL для применения
--- sudo systemctl restart postgresql
+SELECT haplogroup, total_profiles, status, loaded_at 
+FROM haplogroup_databases 
+ORDER BY total_profiles DESC;
 ```
 
-### Batch Insert Optimization
-
-```javascript
-// Используем bulk_insert_profiles() вместо отдельных INSERT
-const batchSize = 5000; // оптимальный размер батча
-
-// BAD (медленно):
-for (const profile of profiles) {
-  await pool.query('INSERT INTO ystr_profiles ...', [profile]);
-}
-
-// GOOD (быстро):
-for (let i = 0; i < profiles.length; i += batchSize) {
-  const batch = profiles.slice(i, i + batchSize);
-  await pool.query('SELECT bulk_insert_profiles($1)', [JSON.stringify(batch)]);
-}
-```
-
-### Progress Tracking
-
-```javascript
-const ProgressBar = require('progress');
-
-const bar = new ProgressBar('Importing [:bar] :percent :etas', {
-  total: profiles.length,
-  width: 40
-});
-
-for (let i = 0; i < profiles.length; i += batchSize) {
-  // ... import batch ...
-  bar.tick(Math.min(batchSize, profiles.length - i));
-}
-```
-
----
-
-## 🔍 Проверка и валидация
-
-### После импорта каждой базы:
-
-```sql
--- 1. Проверить количество профилей
-SELECT COUNT(*) FROM ystr_profiles WHERE haplogroup = 'R1a';
-
--- 2. Проверить среднее количество маркеров
-SELECT
-    haplogroup,
-    AVG((SELECT COUNT(*) FROM jsonb_object_keys(markers))) as avg_markers
-FROM ystr_profiles
-WHERE haplogroup = 'R1a'
-GROUP BY haplogroup;
-
--- 3. Проверить дубликаты kit_number
-SELECT kit_number, COUNT(*)
-FROM ystr_profiles
-GROUP BY kit_number
-HAVING COUNT(*) > 1;
-
--- 4. Проверить профили без маркеров
-SELECT COUNT(*)
-FROM ystr_profiles
-WHERE jsonb_object_keys(markers) IS NULL;
-
--- 5. Проверить топ-10 маркеров
-SELECT
-    key as marker_name,
-    COUNT(*) as profiles_with_marker
-FROM ystr_profiles, jsonb_object_keys(markers)
-WHERE haplogroup = 'R1a'
-GROUP BY key
-ORDER BY profiles_with_marker DESC
-LIMIT 10;
-```
-
----
-
-## 🚨 Troubleshooting
-
-### Проблема: "Duplicate key value violates unique constraint"
-
-**Причина:** Дубликаты kit_number в CSV
-
-**Решение:**
-```javascript
-// В функции import, перед bulk_insert:
-const uniqueProfiles = profiles.reduce((acc, profile) => {
-  acc[profile.kitNumber] = profile; // последний wins
-  return acc;
-}, {});
-
-const deduplicatedProfiles = Object.values(uniqueProfiles);
-console.log(`Removed ${profiles.length - deduplicatedProfiles.length} duplicates`);
-```
-
-### Проблема: "Out of memory"
-
-**Причина:** Слишком большой batch size
-
-**Решение:**
-```javascript
-// Уменьшить batch size
-const batchSize = 1000; // вместо 5000
-```
-
-### Проблема: "Connection timeout"
-
-**Причина:** Долгий импорт
-
-**Решение:**
-```javascript
-// Увеличить timeout в database.js
-const pool = new Pool({
-  // ...
-  connectionTimeoutMillis: 60000, // 60 секунд
-  statement_timeout: 300000, // 5 минут
-  query_timeout: 300000
-});
-```
-
----
-
-## 📊 Ожидаемый результат
-
-После успешного импорта:
-
-```
-╔════════════╦══════════════╦═══════════════╦══════════════╗
-║ Haplogroup ║ Profiles     ║ Avg Markers   ║ File Size    ║
-╠════════════╬══════════════╬═══════════════╬══════════════╣
-║ R1b        ║ ~50,000      ║ 37.5          ║ Chunked JSON ║
-║ I          ║ ~40,000      ║ 36.2          ║ 16 MB        ║
-║ R1a        ║ ~18,000      ║ 38.1          ║ 6.9 MB       ║
-║ E          ║ ~15,000      ║ 35.8          ║ 5.9 MB       ║
-║ Others     ║ ~14,000      ║ 34.5          ║ 5.5 MB       ║
-║ J2         ║ ~13,000      ║ 36.9          ║ 5.0 MB       ║
-║ J1         ║ ~12,000      ║ 37.3          ║ 4.8 MB       ║
-║ G          ║ ~8,000       ║ 35.1          ║ 3.2 MB       ║
-║ Mixed      ║ ~40          ║ 25.0          ║ 16 KB        ║
-╠════════════╬══════════════╬═══════════════╬══════════════╣
-║ **TOTAL**  ║ **~170,000** ║ **36.8**      ║ **~47 MB**   ║
-╚════════════╩══════════════╩═══════════════╩══════════════╝
-```
-
----
-
-## 🎯 Next Steps
-
-1. ✅ Импорт всех баз (170k profiles)
-2. ⏭️ Создать UI для выбора гаплогрупп
-3. ⏭️ Оптимизировать поиск (партиционирование)
-4. ⏭️ Добавить фильтрацию по множественным гаплогруппам
-5. ⏭️ Тестирование производительности
-
----
-
-**Дата создания:** 2025-10-04
-**Автор:** Claude Code
-**Версия:** 1.0

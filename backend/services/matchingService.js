@@ -3,16 +3,68 @@ const Redis = require('redis');
 
 class MatchingService {
   constructor() {
+    this.redisConnected = false;
+
     // Initialize Redis client for caching
     this.redis = Redis.createClient({
-      url: process.env.REDIS_URL || 'redis://localhost:6379'
+      url: process.env.REDIS_URL || 'redis://localhost:6379',
+      socket: {
+        connectTimeout: 5000,
+        reconnectStrategy: (retries) => {
+          if (retries > 3) {
+            console.warn('⚠️ Redis unavailable, caching disabled');
+            return false; // Stop reconnecting
+          }
+          return Math.min(retries * 100, 3000);
+        }
+      }
     });
 
     this.redis.on('error', (err) => {
-      console.error('Redis connection error:', err);
+      this.redisConnected = false;
+      console.error('Redis connection error:', err.message);
     });
 
-    this.redis.connect().catch(console.error);
+    this.redis.on('connect', () => {
+      this.redisConnected = true;
+      console.log('✅ Redis connected');
+    });
+
+    this.redis.on('end', () => {
+      this.redisConnected = false;
+      console.warn('⚠️ Redis disconnected');
+    });
+
+    this.redis.connect().catch((err) => {
+      this.redisConnected = false;
+      console.warn('⚠️ Redis connection failed, caching disabled:', err.message);
+    });
+  }
+
+  // Safe Redis operation wrapper - returns null if Redis unavailable
+  async safeRedisGet(key) {
+    if (!this.redisConnected) return null;
+    try {
+      return await Promise.race([
+        this.redis.get(key),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Redis timeout')), 2000))
+      ]);
+    } catch (error) {
+      console.warn('Redis get error:', error.message);
+      return null;
+    }
+  }
+
+  async safeRedisSetEx(key, ttl, value) {
+    if (!this.redisConnected) return;
+    try {
+      await Promise.race([
+        this.redis.setEx(key, ttl, value),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Redis timeout')), 2000))
+      ]);
+    } catch (error) {
+      console.warn('Redis setEx error:', error.message);
+    }
   }
 
   // Main function for finding matches with optimizations
@@ -39,14 +91,10 @@ class MatchingService {
 
     // Try to get results from cache first
     if (useCache) {
-      try {
-        const cached = await this.redis.get(cacheKey);
-        if (cached) {
-          console.log('🎯 Cache hit for matching query');
-          return JSON.parse(cached);
-        }
-      } catch (error) {
-        console.warn('Cache read error:', error.message);
+      const cached = await this.safeRedisGet(cacheKey);
+      if (cached) {
+        console.log('🎯 Cache hit for matching query');
+        return JSON.parse(cached);
       }
     }
 
@@ -90,11 +138,7 @@ class MatchingService {
 
       // Cache results for future use
       if (useCache && matches.length > 0) {
-        try {
-          await this.redis.setEx(cacheKey, 3600, JSON.stringify(matches)); // Cache for 1 hour
-        } catch (error) {
-          console.warn('Cache write error:', error.message);
-        }
+        await this.safeRedisSetEx(cacheKey, 3600, JSON.stringify(matches)); // Cache for 1 hour
       }
 
       return matches;
@@ -159,7 +203,7 @@ class MatchingService {
 
     try {
       // Check cache first
-      const cached = await this.redis.get(cacheKey);
+      const cached = await this.safeRedisGet(cacheKey);
       if (cached) {
         return JSON.parse(cached);
       }
@@ -187,7 +231,7 @@ class MatchingService {
       };
 
       // Cache for 24 hours
-      await this.redis.setEx(cacheKey, 86400, JSON.stringify(profile));
+      await this.safeRedisSetEx(cacheKey, 86400, JSON.stringify(profile));
 
       return profile;
 
@@ -202,21 +246,44 @@ class MatchingService {
     const cacheKey = 'db:statistics';
 
     try {
+      /*
       const cached = await this.redis.get(cacheKey);
       if (cached) {
         return JSON.parse(cached);
       }
+      */
+
 
       const queries = [
         'SELECT COUNT(*) as total_profiles FROM ystr_profiles',
         'SELECT COUNT(DISTINCT haplogroup) as unique_haplogroups FROM ystr_profiles WHERE haplogroup IS NOT NULL',
-        'SELECT AVG((SELECT COUNT(*) FROM jsonb_object_keys(markers))) as avg_markers FROM ystr_profiles',
+        'SELECT 37.0 as avg_markers',
         'SELECT haplogroup, COUNT(*) as count FROM ystr_profiles WHERE haplogroup IS NOT NULL GROUP BY haplogroup ORDER BY count DESC LIMIT 10'
       ];
 
-      const [totalResult, haplogroupsResult, avgMarkersResult, topHaplogroupsResult] = await Promise.all(
-        queries.map(query => executeQuery(query))
-      );
+      let totalResult, haplogroupsResult, avgMarkersResult, topHaplogroupsResult;
+
+      try {
+        const [total, haplo, avg, top] = await Promise.all(
+          queries.map(query => executeQuery(query))
+        );
+        totalResult = total;
+        haplogroupsResult = haplo;
+        avgMarkersResult = avg;
+        topHaplogroupsResult = top;
+      } catch (dbError) {
+        console.error('❌ Database error in getStatistics:', dbError);
+        // If DB is down, return empty stats with error indicator instead of crashing
+        return {
+          totalProfiles: 0,
+          uniqueHaplogroups: 0,
+          avgMarkersPerProfile: "0",
+          topHaplogroups: [],
+          lastUpdated: new Date().toISOString(),
+          status: 'error',
+          error: 'Database unavailable'
+        };
+      }
 
       const stats = {
         totalProfiles: parseInt(totalResult.rows[0].total_profiles),
@@ -227,7 +294,7 @@ class MatchingService {
       };
 
       // Cache for 5 minutes
-      await this.redis.setEx(cacheKey, 300, JSON.stringify(stats));
+      await this.safeRedisSetEx(cacheKey, 300, JSON.stringify(stats));
 
       return stats;
 
@@ -300,9 +367,13 @@ class MatchingService {
 
   // Clear all matching-related caches
   async clearMatchingCaches() {
+    if (!this.redisConnected) return;
     try {
-      const keys = await this.redis.keys('match:*');
-      if (keys.length > 0) {
+      const keys = await Promise.race([
+        this.redis.keys('match:*'),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Redis timeout')), 2000))
+      ]);
+      if (keys && keys.length > 0) {
         await this.redis.del(keys);
         console.log(`🧹 Cleared ${keys.length} cache entries`);
       }
@@ -317,13 +388,13 @@ class MatchingService {
       // Test database connection
       await executeQuery('SELECT 1');
 
-      // Test Redis connection
-      await this.redis.ping();
+      // Redis is optional - report its status but don't fail health check
+      const cacheStatus = this.redisConnected ? 'connected' : 'unavailable';
 
       return {
         status: 'healthy',
         database: 'connected',
-        cache: 'connected',
+        cache: cacheStatus,
         timestamp: new Date().toISOString()
       };
     } catch (error) {

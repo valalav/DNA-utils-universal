@@ -70,7 +70,7 @@ module.exports = {
 
       return result;
     } catch (error) {
-      console.error('❌ Database query error:', error.message);
+      console.error('❌ Database query error:', error);
       throw error;
     }
   }

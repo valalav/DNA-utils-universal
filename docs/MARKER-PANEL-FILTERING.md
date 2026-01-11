@@ -1,250 +1,88 @@
-# Фильтрация по панелям маркеров - Исправление критической проблемы
+# 🛡️ Logic: Marker Panel Filtering (80% Rule)
+*Core Algorithm for Match Quality Assurance*
 
-## Дата: 2025-10-07
+## 🎯 The Purpose
+To prevent "false positives" where a profile with very few markers (e.g., 12) artificially scores a 100% match against a high-resolution query (e.g., 111 markers), the system enforcing a **Minimum Marker Threshold**.
 
-## Проблема
+## 📏 The 80% Rule
+For a profile to be considered a valid match, it must possess **at least 80%** of the markers required by the selected panel.
 
-### Описание
-При поиске совпадений профили с меньшим количеством маркеров получали искусственно завышенный процент совпадения, несмотря на то что сравнивалось меньше маркеров.
+> **Formula:** `MinRequired = CEIL(SelectedPanelSize * 0.8)`
 
-### Пример проблемы
-```
-Запрос: 37 маркеров
-Профиль A: 37 маркеров, 5 отличий → 86.5% совпадение
-Профиль B: 11 маркеров, 0 отличий → 100% совпадение (!)
-```
+### Thresholds Table
+| Panel | Markers | Min Required (80%) |
+|:---|:---:|:---:|
+| **Y-STR12** | 12 | **10** |
+| **Y-STR37** | 37 | **30** |
+| **Y-STR67** | 67 | **54** |
+| **Y-STR111** | 111 | **89** |
 
-**Проблема:** Профиль B выходил первым в результатах, хотя с ним сравнивалось только 11 маркеров вместо 37.
+---
 
-## Решение
+## 💻 Implementation: Client-Side (Standard Search)
+The primary search runs effectively in the browser (frontend).
 
-### 1. Добавлен выбор панели маркеров в UI
-
-**Файл:** `str-matcher/src/components/str-matcher/BackendSearch.tsx`
-
-Добавлен dropdown для выбора панели:
-- Y-STR12 (12 маркеров)
-- Y-STR25 (25 маркеров)
-- Y-STR37 (37 маркеров) - по умолчанию
-- Y-STR67 (67 маркеров)
-- Y-STR111 (111 маркеров)
-
-### 2. Обновлен backend API hook
-
-**Файл:** `str-matcher/src/hooks/useBackendAPI.ts`
+**File:** `str-matcher/src/utils/calculations.ts`
+**Function:** `calculateGeneticDistance`
 
 ```typescript
-interface BackendSearchParams {
-  markers: Record<string, string>;
-  maxDistance?: number;
-  limit?: number;
-  markerCount?: 12 | 25 | 37 | 67 | 111;  // ← Добавлено
-  haplogroupFilter?: string;
+// 1. Determine active markers for the selected panel (e.g., Y-STR37)
+const markersToCompare = markerGroups[selectedMarkerCount];
+
+// 2. Count how many of these markers the QUERY actually has data for
+const activeMarkers = markersToCompare.filter(marker => 
+  marker in profile1 && profile1[marker]?.trim()
+);
+
+// 3. Calculate the dynamic threshold
+const minRequired = Math.ceil(activeMarkers.length * 0.8);
+
+// 4. Compare with the MATCH profile
+// ... counting compared markers ...
+
+// 5. Hard stop if threshold not met
+if (comparedCount < minRequired) {
+  return {
+    distance: 0,
+    comparedMarkers: comparedCount,
+    percentIdentical: 0,
+    hasAllRequiredMarkers: false // Excludes from results
+  };
 }
 ```
 
-### 3. Создана улучшенная SQL функция v5
+---
 
-**Файл:** `database/optimized-v5-marker-panel-filter.sql`
+## ☁️ Implementation: Server-Side (Backend Search)
+The accelerated backend search (PostgreSQL) implements the same logic for consistency.
 
-#### Ключевые улучшения:
+**File:** `backend/services/matchingService.js`
+**Function:** `findMatches` (calls SQL function `find_matches_batch`)
 
-##### a) Таблица стандартных панелей
-```sql
-CREATE TABLE marker_panels (
-    panel_size INTEGER PRIMARY KEY,
-    markers TEXT[]
-);
-```
+The logic is enforced inside the high-performance PL/pgSQL function:
+1.  **Input:** Accepts `markerCount` (12/37/67/111) from the request.
+2.  **Filtering:** The SQL `WHERE` clause filters out rows where `array_length(markers) < threshold`.
+3.  **Result:** Only "dense" profiles are returned to the API.
 
-Содержит точные списки маркеров для каждой панели (12, 25, 37, 67, 111).
+---
 
-##### b) Фильтрация профилей по наличию маркеров панели
-```sql
-WHERE fp.profile_panel_marker_count >= panel_min_threshold
-```
+## 🔍 Validation Example
+**Scenario:**
+*   **Query:** Full 37 marker kit.
+*   **Database:** Contains "Partial Kit A" (10 markers).
+*   **Action:** User searches with "Panel: 37".
 
-- `panel_min_threshold` = CEIL(количество_маркеров_панели * 0.8)
-- Профили должны иметь минимум **80% маркеров** от выбранной панели
+**Outcome:**
+1.  **Threshold:** 37 * 0.8 = **30 markers**.
+2.  **Check:** Kit A has 10 markers.
+3.  **Result:** 10 < 30. Kit A is **EXCLUDED** from results.
+    *   *Effect:* Prevents Kit A from showing up as a "Top Match" with 0 GD but low confidence.
 
-##### c) Корректный расчет процента совпадения
-```sql
-percent_identical = ROUND((identical_markers / compared_markers) * 100, 1)
-```
+**Correction:**
+*   To see "Partial Kit A", the user must switch the search panel to **Y-STR12**.
+*   **Threshold:** 12 * 0.8 = **10 markers**.
+*   **Result:** 10 >= 10. Kit A is **INCLUDED**.
 
-Теперь процент рассчитывается на основе **идентичных** маркеров, а не `(compared - distance)`.
-
-### 4. Обновлен backend сервис
-
-**Файл:** `backend/services/matchingService.js`
-
-```javascript
-// Использует v5 функцию вместо v4
-const query = `SELECT * FROM find_matches_batch_v5($1, $2, $3, $4, $5, $6)`;
-
-// Использует percent_identical из SQL
-percentIdentical: row.percent_identical || fallback_calculation
-```
-
-## Логика работы
-
-### До исправления (v4)
-1. Сравнивались только маркеры, которые есть в запросе
-2. Профили с меньшим количеством маркеров не фильтровались
-3. Процент совпадения: `(compared - distance) / compared * 100`
-4. **Результат:** Профили с 11 маркерами могли показывать 100% при 0 отличий
-
-### После исправления (v5)
-1. Определяется панель маркеров (12/25/37/67/111)
-2. Профили **обязаны** иметь ≥80% маркеров панели
-3. Сравниваются только маркеры из панели
-4. Процент совпадения: `identical / compared * 100`
-5. **Результат:** Корректное сравнение "яблок с яблоками"
-
-## Пример работы
-
-### Запрос с панелью Y-STR37
-
-```bash
-curl -X POST http://localhost:9004/api/profiles/find-matches \
-  -H "Content-Type: application/json" \
-  -d '{
-    "markers": {"DYS393":"13", "DYS390":"24"},
-    "maxDistance": 5,
-    "maxResults": 10,
-    "markerCount": 37
-  }'
-```
-
-#### Что происходит:
-
-1. **Загружается панель Y-STR37** (37 маркеров)
-2. **Минимальный порог:** 37 * 0.8 = 30 маркеров
-3. **Фильтрация:** Только профили с ≥30 маркерами из панели Y-STR37
-4. **Сравнение:** Только по маркерам DYS393 и DYS390 (из запроса)
-5. **Сортировка:** По genetic_distance, затем по compared_markers
-
-#### Результаты:
-```json
-{
-  "kitNumber": "100000",
-  "distance": 0,
-  "comparedMarkers": 2,
-  "identicalMarkers": 2,
-  "percentIdentical": "100.0",
-  "markers": { /* 31 маркер */ }
-}
-```
-
-✅ Профиль имеет 31 маркер из панели Y-STR37 (≥30) → включен в результаты
-
-❌ Профиль с 11 маркерами → отфильтрован (< 30)
-
-## Связанные изменения
-
-### Frontend
-- [BackendSearch.tsx](str-matcher/src/components/str-matcher/BackendSearch.tsx) - UI выбора панели
-- [useBackendAPI.ts](str-matcher/src/hooks/useBackendAPI.ts) - передача markerCount
-
-### Backend
-- [matchingService.js](backend/services/matchingService.js) - использование v5 функции
-- [profiles.js](backend/routes/profiles.js) - валидация markerCount (уже была)
-
-### Database
-- [optimized-v5-marker-panel-filter.sql](database/optimized-v5-marker-panel-filter.sql) - новая SQL функция
-- Таблица `marker_panels` с определениями панелей
-
-## Тестирование
-
-### Проверка функции v5
-```sql
--- Поиск с панелью Y-STR37
-SELECT * FROM find_matches_batch_v5(
-  '{"DYS393":"13","DYS390":"24"}'::jsonb,
-  5,    -- maxDistance
-  10,   -- maxResults
-  37,   -- markerCount
-  NULL, -- haplogroupFilter
-  false -- includeSubclades
-);
-```
-
-### Проверка через API
-```bash
-# С панелью Y-STR12 (минимум 10 маркеров)
-curl -X POST http://localhost:9004/api/profiles/find-matches \
-  -H "Content-Type: application/json" \
-  -d '{"markers":{"DYS393":"13"},"markerCount":12}'
-
-# С панелью Y-STR111 (минимум 89 маркеров)
-curl -X POST http://localhost:9004/api/profiles/find-matches \
-  -H "Content-Type: application/json" \
-  -d '{"markers":{"DYS393":"13"},"markerCount":111}'
-```
-
-## Преимущества новой системы
-
-### 1. Корректность
-✅ Профили сравниваются только если имеют достаточно маркеров
-✅ Процент совпадения отражает реальное генетическое сходство
-✅ Нет искусственного завышения результатов
-
-### 2. Гибкость
-✅ Выбор панели маркеров (12/25/37/67/111)
-✅ Автоматическая фильтрация по наличию маркеров
-✅ Совместимость с основным STR matcher
-
-### 3. Производительность
-✅ GIN индекс для быстрой проверки наличия маркеров
-✅ Ранняя фильтрация (LIMIT в CTE)
-✅ Кэширование результатов в Redis (1 час)
-
-## Миграция
-
-### Для существующих установок:
-
-1. **Применить SQL функцию:**
-```bash
-cat database/optimized-v5-marker-panel-filter.sql | \
-  docker exec -i ystr-postgres psql -U postgres -d ystr_matcher
-```
-
-2. **Перезапустить backend:**
-```bash
-# Backend автоматически использует новую v5 функцию
-pm2 restart backend
-```
-
-3. **Frontend обновится автоматически** при следующей сборке
-
-### Обратная совместимость:
-- ✅ Работает с v4, если v5 не найдена
-- ✅ markerCount опциональный (default 37)
-- ✅ Старые запросы без markerCount работают
-
-## Известные ограничения
-
-1. **Минимум 80% маркеров панели**
-   - Профили с < 80% маркеров не попадут в результаты
-   - Это сознательное решение для корректности
-
-2. **Фиксированные панели**
-   - Поддерживаются только стандартные панели: 12, 25, 37, 67, 111
-   - Кастомные панели требуют добавления в таблицу `marker_panels`
-
-3. **Требуется PostgreSQL**
-   - Функция использует специфичные для PG возможности
-   - IndexedDB версия (frontend) использует аналогичную логику
-
-## Будущие улучшения
-
-- [ ] Добавить панель GP (Genetic Path) из основного STR matcher
-- [ ] Визуализация покрытия маркеров в UI
-- [ ] Статистика по панелям в dashboard
-- [ ] Предупреждение если профиль не соответствует выбранной панели
-
-## Связанная документация
-
-- [API-ERROR-400-FIX.md](API-ERROR-400-FIX.md) - Исправление валидации запросов
-- [POSTGRES-IMPLEMENTATION-COMPLETE.md](POSTGRES-IMPLEMENTATION-COMPLETE.md) - PostgreSQL архитектура
-- [src/utils/constants.ts](../str-matcher/src/utils/constants.ts) - Определения панелей маркеров
+## ✅ Status
+*   **Client-Side:** Verified in `calculations.ts`.
+*   **Server-Side:** Verified usage in `matchingService.js`.

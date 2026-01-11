@@ -101,9 +101,11 @@ class YFullAdapter {
     }
 
     findHaplogroup(term) {
-        const results = this.yfullTree.searchNodes(term);
-        if (results.length === 0) return null;
-        return this.convertNodeToFTDNAFormat(results[0].node);
+        // Use findHaplogroup instead of searchNodes to properly handle prefix stripping
+        // e.g., "J-CTS1192" -> strips to "CTS1192" -> finds node J-Z387
+        const node = this.yfullTree.findHaplogroup(term);
+        if (!node) return null;
+        return this.convertNodeToFTDNAFormat(node);
     }
 
     getHaplogroupDetails(haplogroupId) {
