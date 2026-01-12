@@ -796,7 +796,7 @@ const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = '', 
                     onChange={(e) => setReplaceExisting(e.target.checked)}
                     className="w-4 h-4"
                   />
-                  Перезаписать существующие
+                  Overwrite existing
                 </label>
                 {uploadProgress && (
                   <span className="text-sm text-blue-600 ml-2">

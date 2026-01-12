@@ -293,10 +293,10 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
           <button
             onClick={exportToCSV}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm"
-            title={t("geneticMatches.exportCSVTitle")}
+            title="Export matches to CSV"
           >
             <Download className="h-4 w-4" />
-            <span className="text-sm font-medium">{t("geneticMatches.exportCSV")}</span>
+            <span className="text-sm font-medium">Export CSV</span>
           </button>
         </div>
         <p className="text-sm text-gray-600">
@@ -316,7 +316,7 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
             onClick={clearHiddenKitNumbers}
             className="mt-2 px-3 py-1 text-sm bg-orange-500 text-white rounded hover:bg-orange-600"
           >
-            Показать все скрытые ({hiddenKitNumbers.size})
+            Show all hidden ({hiddenKitNumbers.size})
           </button>
         )}
       </div>
@@ -330,25 +330,25 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
               {/* Main header row */}
               <tr className="bg-gradient-to-r from-slate-800 via-blue-900 to-indigo-900 text-white">
                 <th className="sticky left-0 bg-gradient-to-r from-slate-800 to-blue-900 border-r border-blue-700 px-2 py-1.5 text-center z-10 w-[100px] max-w-[100px] font-bold text-sm">
-                  Набор
+                  Kit
                 </th>
                 <th className="border-r border-blue-700 px-2 py-1.5 text-center w-[50px] max-w-[50px] font-bold text-sm">
 
                 </th>
                 <th className="border-r border-blue-700 px-2 py-1.5 text-center w-[150px] max-w-[150px] font-bold text-sm">
-                  Имя
+                  Name
                 </th>
                 <th className="border-r border-blue-700 px-2 py-1.5 text-center w-[120px] max-w-[120px] font-bold text-sm">
-                  Страна
+                  Country
                 </th>
                 <th className="border-r border-blue-700 px-2 py-1.5 text-center w-[180px] max-w-[180px] font-bold text-sm">
-                  Гаплогруппа
+                  Haplogroup
                 </th>
                 <th className="border-r border-blue-700 px-2 py-2 text-center w-[60px] max-w-[60px] font-bold text-sm">
-                  ГР
+                  GD
                 </th>
                 <th className="border-r border-blue-700 px-2 py-2 text-center w-[60px] max-w-[60px] font-bold text-sm">
-                  STR
+                  STRs
                 </th>
                 <th className="border-r border-blue-700 px-2 py-2 text-center w-[60px] max-w-[60px] font-bold text-sm">
                   %
@@ -394,12 +394,11 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
                     <div className="flex items-center justify-center gap-2">
                       <button
                         onClick={() => copyHaplotype(query)}
-                        className={`flex items-center justify-center p-1 rounded transition-colors ${
-                          copiedKitNumber === query.kitNumber
-                            ? 'bg-green-200 text-green-800'
-                            : 'bg-blue-200 text-blue-800 hover:bg-blue-300'
-                        }`}
-                        title="Копировать гаплотип"
+                        className={`flex items-center justify-center p-1 rounded transition-colors ${copiedKitNumber === query.kitNumber
+                          ? 'bg-green-200 text-green-800'
+                          : 'bg-blue-200 text-blue-800 hover:bg-blue-300'
+                          }`}
+                        title="Copy haplotype"
                       >
                         {copiedKitNumber === query.kitNumber ? (
                           <Check className="h-3.5 w-3.5" />
@@ -465,21 +464,19 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
               {filteredMatches.map((match, index) => (
                 <tr
                   key={match.profile?.kitNumber || index}
-                  className={`border-b border-gray-200 hover:bg-blue-50 transition-colors ${
-                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                  }`}
+                  className={`border-b border-gray-200 hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                    }`}
                 >
                   {/* Kit Number */}
                   <td className="sticky left-0 bg-inherit border-r border-gray-300 px-2 py-1 text-center z-10 w-[100px] max-w-[100px]">
                     <div className="flex items-center justify-center gap-2">
                       <button
                         onClick={() => match.profile && copyHaplotype(match.profile)}
-                        className={`flex items-center justify-center p-1 rounded transition-colors ${
-                          copiedKitNumber === match.profile?.kitNumber
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700'
-                        }`}
-                        title="Копировать гаплотип"
+                        className={`flex items-center justify-center p-1 rounded transition-colors ${copiedKitNumber === match.profile?.kitNumber
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700'
+                          }`}
+                        title="Copy haplotype"
                       >
                         {copiedKitNumber === match.profile?.kitNumber ? (
                           <Check className="h-3.5 w-3.5" />
@@ -521,7 +518,7 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
                     <button
                       onClick={() => match.profile?.kitNumber && toggleHideKitNumber(match.profile.kitNumber)}
                       className="text-red-600 hover:text-red-800 cursor-pointer font-bold text-lg leading-none"
-                      title="Скрыть этот образец"
+                      title="Hide this sample"
                     >
                       ×
                     </button>
@@ -573,15 +570,14 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
                   {/* Genetic Distance */}
                   <td className="border-r border-gray-300 px-2 py-1 text-center w-[60px] max-w-[60px]">
                     <span
-                      className={`px-2 py-0.5 rounded text-xs font-bold text-white ${
-                        match.distance === 0
-                          ? 'bg-green-500'
-                          : match.distance <= 2
+                      className={`px-2 py-0.5 rounded text-xs font-bold text-white ${match.distance === 0
+                        ? 'bg-green-500'
+                        : match.distance <= 2
                           ? 'bg-blue-500'
                           : match.distance <= 5
-                          ? 'bg-orange-500'
-                          : 'bg-red-500'
-                      }`}
+                            ? 'bg-orange-500'
+                            : 'bg-red-500'
+                        }`}
                     >
                       {match.distance}
                     </span>
@@ -589,7 +585,7 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
 
                   {/* STR Count */}
                   <td className="border-r border-gray-300 px-2 py-1 text-center w-[60px] max-w-[60px]">
-                    <span className="text-sm font-semibold">
+                    <span className="px-2 py-0.5 rounded text-xs font-bold text-white bg-blue-500">
                       {match.comparedMarkers}
                     </span>
                   </td>
@@ -623,11 +619,10 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
                     return (
                       <td key={marker} className="border-r border-gray-300 px-0.5 py-1 text-center w-[35px] max-w-[35px] min-w-[35px]">
                         <div
-                          className={`text-xs font-bold px-0.5 py-0.5 rounded ${
-                            diff === 0
-                              ? rarityClass || 'bg-white'
-                              : 'bg-white'
-                          }`}
+                          className={`text-xs font-bold px-0.5 py-0.5 rounded ${diff === 0
+                            ? rarityClass || 'bg-white'
+                            : 'bg-white'
+                            }`}
                           title={`${marker}: ${matchValue}`}
                         >
                           {!isNaN(diff) && diff > 0 ? (

@@ -502,21 +502,19 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
             <h2 className="text-lg font-bold text-gray-800 mb-2">Search Configuration</h2>
             <div className="flex flex-wrap gap-2">
               <button
-                className={`px-4 py-2 rounded-full font-medium text-sm transition-all duration-300 ${
-                  searchMode === 'kit'
+                className={`px-4 py-2 rounded-full font-medium text-sm transition-all duration-300 ${searchMode === 'kit'
                     ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md'
                     : 'bg-white text-gray-700 hover:bg-gray-50 shadow-sm border border-gray-200'
-                }`}
+                  }`}
                 onClick={() => setSearchMode('kit')}
               >
                 🎯 Search by Kit Number
               </button>
               <button
-                className={`px-4 py-2 rounded-full font-medium text-sm transition-all duration-300 ${
-                  searchMode === 'markers'
+                className={`px-4 py-2 rounded-full font-medium text-sm transition-all duration-300 ${searchMode === 'markers'
                     ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-md'
                     : 'bg-white text-gray-700 hover:bg-gray-50 shadow-sm border border-gray-200'
-                }`}
+                  }`}
                 onClick={() => setSearchMode('markers')}
               >
                 🧬 Search by Markers
@@ -528,7 +526,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
                 onClick={() => setShowImportModal(true)}
               >
                 <Upload className="h-4 w-4" />
-                Импорт профилей
+                Import Profiles
               </button>
 
               {/* Clear Import Button (shown when profiles are imported) */}
@@ -536,7 +534,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
                 <button
                   className="px-4 py-2 rounded-full font-medium text-sm transition-all duration-300 bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-md hover:shadow-lg flex items-center gap-2"
                   onClick={() => {
-                    if (confirm(`Удалить ${importedProfiles.length} импортированных профилей?`)) {
+                    if (confirm(`Delete ${importedProfiles.length} imported profiles?`)) {
                       dispatch(clearImportedProfiles());
                     }
                   }}
@@ -574,7 +572,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
           <div className="p-4 space-y-4">
             {/* Compact Search Settings */}
             <div className="flex flex-wrap gap-4">
-              <div className="space-y-1" style={{width: '200px'}}>
+              <div className="space-y-1" style={{ width: '200px' }}>
                 <label className="block text-xs font-semibold text-gray-700">Панель маркеров</label>
                 <select
                   value={markerCount}
@@ -588,7 +586,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
                   <option value="111">Y-STR111</option>
                 </select>
               </div>
-              <div className="space-y-1" style={{width: '200px'}}>
+              <div className="space-y-1" style={{ width: '200px' }}>
                 <label className="block text-xs font-semibold text-gray-700">Max Genetic Distance</label>
                 <div className="relative">
                   <input
@@ -605,7 +603,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
                   </div>
                 </div>
               </div>
-              <div className="space-y-1" style={{width: '200px'}}>
+              <div className="space-y-1" style={{ width: '200px' }}>
                 <label className="block text-xs font-semibold text-gray-700">Max Results</label>
                 <div className="relative">
                   <input
@@ -712,7 +710,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
 
             {searchMode === 'kit' ? (
               <div className="space-y-3">
-                <div className="space-y-1" style={{maxWidth: '400px'}}>
+                <div className="space-y-1" style={{ maxWidth: '400px' }}>
                   <label className="block text-xs font-semibold text-gray-700">Kit Number</label>
                   <input
                     type="text"
@@ -725,7 +723,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
                 <button
                   onClick={handleSearchByKit}
                   disabled={loading || filtering || !kitNumber.trim()}
-                  style={{maxWidth: '400px'}}
+                  style={{ maxWidth: '400px' }}
                   className="w-full py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-300 shadow-md"
                 >
                   {loading || filtering ? (
@@ -756,7 +754,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
                 <button
                   onClick={handleSearchByMarkers}
                   disabled={loading || filtering}
-                  style={{maxWidth: '400px'}}
+                  style={{ maxWidth: '400px' }}
                   className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-300 shadow-md"
                 >
                   {loading || filtering ? (
@@ -798,44 +796,44 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
       </div>
     </div>
 
-      {/* Matches Results - Full Width */}
-      {matches.length > 0 && (
-        <div className="w-full bg-white shadow-lg mt-4 overflow-x-auto py-4">
-            <AdvancedMatchesTable
-              matches={displayedMatches}
-              query={profile}
-              showOnlyDifferences={true}
-              onKitNumberClick={handleKitNumberClick}
-              onRemoveMarker={handleRemoveMarker}
-              onHaplogroupClick={handleHaplogroupClick}
-              onHaplogroupInfo={setSelectedHaplogroupInfo}
-              onEditProfile={setEditingKitNumber}
-            />
-        </div>
-      )}
-
-      {/* Haplogroup Info Popup */}
-      {selectedHaplogroupInfo && (
-        <HaplogroupInfoPopup
-          haplogroup={selectedHaplogroupInfo}
-          onClose={() => setSelectedHaplogroupInfo(null)}
+    {/* Matches Results - Full Width */}
+    {matches.length > 0 && (
+      <div className="w-full bg-white shadow-lg mt-4 overflow-x-auto py-4">
+        <AdvancedMatchesTable
+          matches={displayedMatches}
+          query={profile}
+          showOnlyDifferences={true}
+          onKitNumberClick={handleKitNumberClick}
+          onRemoveMarker={handleRemoveMarker}
+          onHaplogroupClick={handleHaplogroupClick}
+          onHaplogroupInfo={setSelectedHaplogroupInfo}
+          onEditProfile={setEditingKitNumber}
         />
-      )}
+      </div>
+    )}
 
-      {/* Profile Edit Modal */}
-      {editingKitNumber && (
-        <ProfileEditModal
-          kitNumber={editingKitNumber}
-          onClose={() => setEditingKitNumber(null)}
-        />
-      )}
-
-      {/* Import Profiles Modal */}
-      <ImportProfilesModal
-        isOpen={showImportModal}
-        onClose={() => setShowImportModal(false)}
-        onImport={handleImport}
+    {/* Haplogroup Info Popup */}
+    {selectedHaplogroupInfo && (
+      <HaplogroupInfoPopup
+        haplogroup={selectedHaplogroupInfo}
+        onClose={() => setSelectedHaplogroupInfo(null)}
       />
+    )}
+
+    {/* Profile Edit Modal */}
+    {editingKitNumber && (
+      <ProfileEditModal
+        kitNumber={editingKitNumber}
+        onClose={() => setEditingKitNumber(null)}
+      />
+    )}
+
+    {/* Import Profiles Modal */}
+    <ImportProfilesModal
+      isOpen={showImportModal}
+      onClose={() => setShowImportModal(false)}
+      onImport={handleImport}
+    />
   </>);
 };
 
