@@ -394,6 +394,38 @@ class MatchingService {
     }
   }
 
+  // FTDNA Marker Constants (matching frontend utils/constants.ts)
+  const FTDNA_MARKERS = [
+    "DYS393", "DYS390", "DYS19", "DYS391", "DYS385",
+    "DYS426", "DYS388", "DYS439", "DYS389i", "DYS392",
+    "DYS389ii", "DYS458", "DYS459", "DYS455", "DYS454",
+    "DYS447", "DYS437", "DYS448", "DYS449", "DYS464",
+    "DYS460", "Y-GATA-H4", "YCAII", "DYS456", "DYS607",
+    "DYS576", "DYS570", "CDY", "DYS442", "DYS438",
+    "DYS531", "DYS578", "DYF395S1", "DYS590", "DYS537",
+    "DYS641", "DYS472", "DYF406S1", "DYS511", "DYS425",
+    "DYS413", "DYS557", "DYS594", "DYS436", "DYS490",
+    "DYS534", "DYS450", "DYS444", "DYS481", "DYS520",
+    "DYS446", "DYS617", "DYS568", "DYS487", "DYS572",
+    "DYS640", "DYS492", "DYS565",
+    "DYS710", "DYS485", "DYS632", "DYS495", "DYS540",
+    "DYS714", "DYS716", "DYS717", "DYS505", "DYS556",
+    "DYS549", "DYS589", "DYS522", "DYS494", "DYS533",
+    "DYS636", "DYS575", "DYS638", "DYS462", "DYS452",
+    "DYS445", "Y-GATA-A10", "DYS463", "DYS441", "Y-GGAAT-1B07",
+    "DYS525", "DYS712", "DYS593", "DYS650", "DYS532",
+    "DYS715", "DYS504", "DYS513", "DYS561", "DYS552",
+    "DYS726", "DYS635", "DYS587", "DYS643", "DYS497",
+    "DYS510", "DYS434", "DYS461", "DYS435"
+  ];
+
+  const MARKER_PANELS = {
+    12: FTDNA_MARKERS.slice(0, 11),
+    37: FTDNA_MARKERS.slice(0, 30),
+    67: FTDNA_MARKERS.slice(0, 58),
+    111: FTDNA_MARKERS.slice(0, 102)
+  };
+
   // Export matches as JSON with rarity analysis
   async exportMatches(kitNumber, options = {}) {
     try {
@@ -403,31 +435,39 @@ class MatchingService {
         throw new Error('Profile not found');
       }
 
+      // Determine panel markers based on requested count (default 37)
+      const requestedCount = options.markerCount || 37;
+      const panelMarkers = MARKER_PANELS[requestedCount] || MARKER_PANELS[37];
+
       // 2. Prepare Match Options
       const searchOptions = {
         maxDistance: options.maxDistance || 25,
-        maxResults: 5000, // Fetch large set for accurate rarity context
-        markerCount: options.markerCount || 37,
-        haplogroupFilter: queryProfile.haplogroup, // Default to own haplogroup
+        maxResults: 5000,
+        markerCount: requestedCount,
+        haplogroupFilter: queryProfile.haplogroup,
         includeSubclades: true,
         useCache: true,
-        ...options // Override defaults if provided
+        ...options
       };
 
       // 3. Find Matches (Global Context)
       const matches = await this.findMatches(queryProfile.markers, searchOptions);
       const totalMatches = matches.length;
 
-      // 4. Calculate Rarity Scores (on Full Dataset)
-      // Formula: Frequency = Count(MatchValue == QueryValue) / TotalMatches
+      // 4. Calculate Rarity Scores
       const rarityScores = {};
-      const queryMarkers = queryProfile.markers;
+      const queryValues = {}; // Filtered query values
 
-      // Get the list of markers we care about (from options or defaults)
-      // We'll use the markers present in the query profile as the baseline
-      Object.keys(queryMarkers).forEach(marker => {
-        const queryValue = queryMarkers[marker];
+      // Iterate ONLY over the requested panel markers
+      // This strictly filters the output to the requested panel (e.g. Y37)
+      panelMarkers.forEach(marker => {
+        const queryValue = queryProfile.markers[marker];
+
+        // Skip markers that the query profile technically doesn't have populated
+        // (though in FTDNA/YSeq imports usually all are present)
         if (!queryValue) return;
+
+        queryValues[marker] = queryValue;
 
         let sameCount = 0;
         matches.forEach(m => {
@@ -438,12 +478,6 @@ class MatchingService {
 
         const frequency = totalMatches > 0 ? (sameCount / totalMatches) : 0;
 
-        // Map to Rarity Code (0-4)
-        // 4: <= 4% (Extremely Rare)
-        // 3: <= 8% (Very Rare)
-        // 2: <= 15% (Rare)
-        // 1: <= 25% (Uncommon)
-        // 0: > 25% (Common)
         if (frequency <= 0.04) rarityScores[marker] = 4;
         else if (frequency <= 0.08) rarityScores[marker] = 3;
         else if (frequency <= 0.15) rarityScores[marker] = 2;
@@ -452,7 +486,6 @@ class MatchingService {
       });
 
       // 5. Truncate to Top 30 Matches
-      // Sort by Distance ASC, then KitNumber ASC (deterministic)
       const topMatches = matches
         .sort((a, b) => {
           if (a.distance !== b.distance) return a.distance - b.distance;
@@ -466,27 +499,32 @@ class MatchingService {
           query_kit: queryProfile.kitNumber,
           query_name: queryProfile.name,
           query_haplogroup: queryProfile.haplogroup,
-          panel: `Y${searchOptions.markerCount}`,
+          panel: `Y${requestedCount}`,
           generated_at: new Date().toISOString(),
           total_matches_found: totalMatches,
           matches_included: topMatches.length
         },
-        // We use keys from queryMarkers as the ordered list, 
-        // effectively defining the "panel" implicitly by what we matched on.
-        // For a stricter order, we would need the FTDNA_MARKER_ORDER constant here.
-        markers: Object.keys(queryMarkers),
-        query_values: queryMarkers,
+        // Explicitly ordered marker list
+        markers: Object.keys(queryValues),
+        query_values: queryValues,
         rarity_scores: rarityScores,
         matches: topMatches.map(m => {
           const diffs = {};
 
-          // Calculate Diffs
-          Object.keys(queryMarkers).forEach(key => {
-            const v1 = parseFloat(queryMarkers[key]);
+          Object.keys(queryValues).forEach(key => {
+            const v1 = parseFloat(queryValues[key]);
             const v2 = parseFloat(m.profile.markers[key]);
             if (!isNaN(v1) && !isNaN(v2) && v1 !== v2) {
               diffs[key] = v2 - v1;
             }
+          });
+
+          // Only exporting marker values relevant to the panel?
+          // User requested "only what query has" based on panel.
+          // Let's filter the values object too for clean output.
+          const filteredValues = {};
+          Object.keys(queryValues).forEach(k => {
+            if (m.profile.markers[k]) filteredValues[k] = m.profile.markers[k];
           });
 
           return {
@@ -496,7 +534,7 @@ class MatchingService {
             haplo: m.profile.haplogroup,
             gd: m.distance,
             shared: m.comparedMarkers,
-            values: m.profile.markers,
+            values: filteredValues,
             diffs: diffs
           };
         })

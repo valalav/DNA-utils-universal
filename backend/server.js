@@ -61,6 +61,12 @@ const limiter = rateLimit({
 // Apply rate limiting to API routes
 app.use('/api/', limiter);
 
+// Appy API Key Authentication to all /api routes (except explicitly public ones if any)
+// Note: We'll modify apiKeyAuth.js to allow public endpoints if needed, or mount specific routes before this.
+// For now, secure EVERYTHING under /api/
+const { requireApiKey } = require('./middleware/apiKeyAuth');
+app.use('/api/', requireApiKey());
+
 // Slow down repeated requests
 const speedLimiter = slowDown({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -92,7 +98,10 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health check endpoint
+// Middleware for API key authentication
+const { requireApiKey } = require('./middleware/apiKeyAuth');
+
+// Health check endpoint (public)
 app.get('/health', async (req, res) => {
   try {
     const matchingService = require('./services/matchingService');

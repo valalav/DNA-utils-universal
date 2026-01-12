@@ -60,6 +60,12 @@ export async function middleware(request: NextRequest) {
         }
       }
 
+      // ПРИОРИТЕТ 5: Внутренний системный ключ (из ENV)
+      // Если клиент не предоставил ключ, Next.js подставляет мастер-ключ
+      if (!headers.has('X-API-Key') && process.env.BACKEND_API_KEY) {
+        headers.set('X-API-Key', process.env.BACKEND_API_KEY)
+      }
+
       // Копируем body если есть
       let body = undefined
       if (request.method !== 'GET' && request.method !== 'HEAD') {

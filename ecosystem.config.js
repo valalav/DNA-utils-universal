@@ -10,7 +10,8 @@ module.exports = {
       env_production: {
         NODE_ENV: "production",
         PORT: 9005,
-        DB_MAX_CONNECTIONS: 3 // 3 conn * 32 workers = 96 (fits in PG default 100)
+        DB_MAX_CONNECTIONS: 3, // 3 conn * 32 workers = 96 (fits in PG default 100)
+        MASTER_API_KEY: "dna_v2_universal_secret_key_2026"
       }
     },
     // FTDNA Haplogroup Service - порт 9003

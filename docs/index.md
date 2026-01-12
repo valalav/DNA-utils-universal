@@ -31,6 +31,8 @@ Welcome to the documentation hub for **DNA-utils-universal v2.0**, a hybrid Gene
 ## 🗄️ Data Management
 *   **[Data Management Guide](DATA-IMPORT-GUIDE.md)**  
     Comprehensive guide to Database Schema, CSV Imports, and Mass Loading scripts.
+*   **[Export API Guide](EXPORT-API-GUIDE.md)**
+    Documentation for the secure JSON Match Export endpoint (`/api/export/matches`).
 ## 🚀 Production Configuration
 
 ### Services & Ports (Internal Node)
