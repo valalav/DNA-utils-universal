@@ -53,7 +53,7 @@ class HaplogroupService {
         WITH RECURSIVE haplogroup_tree AS (
           SELECT
             haplogroup, parent_haplogroup, level,
-            ARRAY[haplogroup] as path,
+            ARRAY[haplogroup]::VARCHAR[] as path,
             haplogroup as root
           FROM haplogroups
           WHERE parent_haplogroup IS NULL

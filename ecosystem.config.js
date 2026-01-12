@@ -5,9 +5,12 @@ module.exports = {
       name: "backend",
       cwd: "./backend",
       script: "./server.js",
+      instances: "max",
+      exec_mode: "cluster",
       env_production: {
         NODE_ENV: "production",
-        PORT: 9005
+        PORT: 9005,
+        DB_MAX_CONNECTIONS: 3 // 3 conn * 32 workers = 96 (fits in PG default 100)
       }
     },
     // FTDNA Haplogroup Service - порт 9003
