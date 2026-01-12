@@ -24,4 +24,21 @@
 *   **Localization**: Full English UI enforcement.
 
 ---
-*Reference Design Docs in `docs/designs/`*
+
+## 🟣 Infrastructure Migration (Performance Unlock)
+**Context**: Current Proxmox LXC setup blocks Docker SHM/AppArmor, limiting Postgres to single-core performance (~40s search).
+**Goal**: Migrate to Privileged VM to unlock `max_parallel_workers` (~10s search).
+
+1.  **Environment Setup**:
+    *   Create a **Full VM** (not LXC) or Privileged LXC on Proxmox.
+    *   Install Docker & Netbird.
+    *   **Verify**: Run `docker run -it --rm --shm-size=4g postgres:15 ipcs` (Must show segments, not "Permission Denied").
+2.  **Data Migration**:
+    *   Backup current stable DB: `pg_dump -Fc ... > backup.dump`.
+    *   Restore on new node.
+3.  **Parallelism Activation**:
+    *   Uncomment `shm_size: 4gb` in `docker-compose.yml`.
+    *   Uncomment `max_parallel_workers` settings.
+    *   Apply `008_restore_parallel_sql_logic.sql`.
+4.  **Verification**:
+    *   Run `benchmark.js` - Expect <12s on 300k profiles.
