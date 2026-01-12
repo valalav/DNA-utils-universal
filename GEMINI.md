@@ -142,6 +142,11 @@ To update: `unhold` -> `upgrade` -> `hold`.
 
 ## 5. 🛠️ Developer Workflow
 
+### **Feature Lifecycle Protocol (MANDATORY)**
+1.  **Draft Design**: Create/Update `docs/designs/<feature>.md`.
+2.  **Update Roadmap**: Add entry to `ROADMAP.md`.
+3.  **Implement**: Only after 1 & 2 are complete.
+
 **Connecting to Environment**:
 1.  **Codebase**: You are locally on Proxmox (`192.168.10.170`).
 2.  **Public Check**: Run `curl -I https://pystr.valalav.ru/backend-search`.
