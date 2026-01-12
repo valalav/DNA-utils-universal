@@ -270,6 +270,31 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
     });
   }, []);
 
+  // Determine FTDNA Panel (Y37, Y67, Y111) based on marker count
+  const getPanelBadge = useCallback((markers: Record<string, string>) => {
+    if (!markers) return null;
+
+    let count = 0;
+    FTDNA_MARKER_ORDER.forEach(marker => {
+      if (markers[marker] && markers[marker].trim() !== '') {
+        count++;
+        // Add extra count for palindromes
+        if (marker in palindromes) {
+          // @ts-ignore
+          const extra = palindromes[marker] - 1;
+          count += extra;
+        }
+      }
+    });
+
+    if (count >= 100) return <span className="ml-2 px-1.5 py-0.5 text-[10px] font-bold text-white bg-purple-600 rounded shadow-sm">Y111</span>;
+    if (count >= 60) return <span className="ml-2 px-1.5 py-0.5 text-[10px] font-bold text-white bg-indigo-500 rounded shadow-sm">Y67</span>;
+    if (count >= 30) return <span className="ml-2 px-1.5 py-0.5 text-[10px] font-bold text-white bg-blue-500 rounded shadow-sm">Y37</span>;
+    if (count >= 10) return <span className="ml-2 px-1.5 py-0.5 text-[10px] font-bold text-gray-600 bg-gray-200 rounded shadow-sm">Y12</span>;
+
+    return null;
+  }, []);
+
   if (!matches || matches.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -406,7 +431,10 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
                           <Copy className="h-3.5 w-3.5" />
                         )}
                       </button>
-                      <span className="font-bold text-blue-800">{query.kitNumber || 'Query'}</span>
+                      <div className="flex flex-col items-center">
+                        <span className="font-bold text-blue-800">{query.kitNumber || 'Query'}</span>
+                        {getPanelBadge(query.markers)}
+                      </div>
                     </div>
                   </td>
                   <td className="border-r border-gray-300 px-2 py-2 text-center w-[50px] max-w-[50px]">
@@ -510,6 +538,8 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
                           </button>
                         )}
                       </div>
+                      {/* Render Badge here */}
+                      {match.profile && getPanelBadge(match.profile.markers)}
                     </div>
                   </td>
 
