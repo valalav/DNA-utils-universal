@@ -394,6 +394,122 @@ class MatchingService {
     }
   }
 
+  // Export matches as JSON with rarity analysis
+  async exportMatches(kitNumber, options = {}) {
+    try {
+      // 1. Get Query Profile
+      const queryProfile = await this.getProfile(kitNumber);
+      if (!queryProfile) {
+        throw new Error('Profile not found');
+      }
+
+      // 2. Prepare Match Options
+      const searchOptions = {
+        maxDistance: options.maxDistance || 25,
+        maxResults: 5000, // Fetch large set for accurate rarity context
+        markerCount: options.markerCount || 37,
+        haplogroupFilter: queryProfile.haplogroup, // Default to own haplogroup
+        includeSubclades: true,
+        useCache: true,
+        ...options // Override defaults if provided
+      };
+
+      // 3. Find Matches (Global Context)
+      const matches = await this.findMatches(queryProfile.markers, searchOptions);
+      const totalMatches = matches.length;
+
+      // 4. Calculate Rarity Scores (on Full Dataset)
+      // Formula: Frequency = Count(MatchValue == QueryValue) / TotalMatches
+      const rarityScores = {};
+      const queryMarkers = queryProfile.markers;
+
+      // Get the list of markers we care about (from options or defaults)
+      // We'll use the markers present in the query profile as the baseline
+      Object.keys(queryMarkers).forEach(marker => {
+        const queryValue = queryMarkers[marker];
+        if (!queryValue) return;
+
+        let sameCount = 0;
+        matches.forEach(m => {
+          if (m.profile.markers[marker] === queryValue) {
+            sameCount++;
+          }
+        });
+
+        const frequency = totalMatches > 0 ? (sameCount / totalMatches) : 0;
+
+        // Map to Rarity Code (0-4)
+        // 4: <= 4% (Extremely Rare)
+        // 3: <= 8% (Very Rare)
+        // 2: <= 15% (Rare)
+        // 1: <= 25% (Uncommon)
+        // 0: > 25% (Common)
+        if (frequency <= 0.04) rarityScores[marker] = 4;
+        else if (frequency <= 0.08) rarityScores[marker] = 3;
+        else if (frequency <= 0.15) rarityScores[marker] = 2;
+        else if (frequency <= 0.25) rarityScores[marker] = 1;
+        else rarityScores[marker] = 0;
+      });
+
+      // 5. Truncate to Top 30 Matches
+      // Sort by Distance ASC, then KitNumber ASC (deterministic)
+      const topMatches = matches
+        .sort((a, b) => {
+          if (a.distance !== b.distance) return a.distance - b.distance;
+          return a.profile.kitNumber.localeCompare(b.profile.kitNumber);
+        })
+        .slice(0, 30);
+
+      // 6. Format JSON Output
+      const output = {
+        meta: {
+          query_kit: queryProfile.kitNumber,
+          query_name: queryProfile.name,
+          query_haplogroup: queryProfile.haplogroup,
+          panel: `Y${searchOptions.markerCount}`,
+          generated_at: new Date().toISOString(),
+          total_matches_found: totalMatches,
+          matches_included: topMatches.length
+        },
+        // We use keys from queryMarkers as the ordered list, 
+        // effectively defining the "panel" implicitly by what we matched on.
+        // For a stricter order, we would need the FTDNA_MARKER_ORDER constant here.
+        markers: Object.keys(queryMarkers),
+        query_values: queryMarkers,
+        rarity_scores: rarityScores,
+        matches: topMatches.map(m => {
+          const diffs = {};
+
+          // Calculate Diffs
+          Object.keys(queryMarkers).forEach(key => {
+            const v1 = parseFloat(queryMarkers[key]);
+            const v2 = parseFloat(m.profile.markers[key]);
+            if (!isNaN(v1) && !isNaN(v2) && v1 !== v2) {
+              diffs[key] = v2 - v1;
+            }
+          });
+
+          return {
+            kit: m.profile.kitNumber,
+            name: m.profile.name,
+            country: m.profile.country,
+            haplo: m.profile.haplogroup,
+            gd: m.distance,
+            shared: m.comparedMarkers,
+            values: m.profile.markers,
+            diffs: diffs
+          };
+        })
+      };
+
+      return output;
+
+    } catch (error) {
+      console.error('❌ Error exporting matches:', error);
+      throw error;
+    }
+  }
+
   // Health check for the service
   async healthCheck() {
     try {

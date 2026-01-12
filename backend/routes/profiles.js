@@ -194,6 +194,22 @@ router.get('/',
   })
 );
 
+// GET /api/profiles/export/matches/:kitNumber - Export matches as JSON
+router.get('/export/matches/:kitNumber',
+  asyncHandler(async (req, res) => {
+    const { kitNumber } = req.params;
+    const options = {
+      maxDistance: req.query.maxDistance ? parseInt(req.query.maxDistance) : 25,
+      markerCount: req.query.markerCount ? parseInt(req.query.markerCount) : 37,
+      useCache: req.query.refresh !== 'true'
+    };
+
+    const exportData = await matchingService.exportMatches(kitNumber, options);
+
+    res.json(exportData);
+  })
+);
+
 // GET /api/profiles/stats/database - Get database statistics
 router.get('/stats/database',
   asyncHandler(async (req, res) => {
