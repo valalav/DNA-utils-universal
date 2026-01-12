@@ -115,6 +115,11 @@ Always use Context7 MCP when I need library/API documentation, code generation, 
    1. Check CORS in `ftdna_haplo/server/server.js` (Must allow `192.168.x.x` & `100.x.x.x`).
    2. Check if port 9003 is zombie: `sudo netstat -tulpn | grep 9003`.
 
+   **Netbird Binary Corruption (Self-Destruct):**
+   - **Symptom**: `netbird: command not found`. `ls` shows 0-byte file.
+   - **Cause**: Failed auto-update at midnight.
+   - **Prevention (CRITICAL)**: `sudo apt-mark hold netbird`. To update: `unhold` -> `upgrade` -> `hold`.
+
 # DEPLOYMENT_NOTES (Internal Node - Proxmox CT 109)
    - **Mode**: Next.js Standalone (output: 'standalone' in next.config.js)
    - **PM2 Config**: `ecosystem.config.js` в корне проекта

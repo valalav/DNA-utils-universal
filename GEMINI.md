@@ -111,6 +111,14 @@ If site shows **504 Gateway Timeout**:
 2. Connect cleanly: `sudo netbird up`.
 3. Ping from Oracle: `ssh ... ubuntu@130.61.157.122 "ping 100.101.218.57"`
 
+### **Netbird Integrity (Preventing "Command Not Found")**
+Netbird auto-updates can corrupt the binary (0-byte file).
+**MANDATORY**: Freeze version to prevent this.
+```bash
+sudo apt-mark hold netbird
+```
+To update: `unhold` -> `upgrade` -> `hold`.
+
 ---
 
 ## 4. 🧠 Key Algorithms & Logic (Agent Knowledge)

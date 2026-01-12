@@ -68,6 +68,23 @@ pm2 save
 66: 3.  **Check Redis**: If `DISABLE_REDIS=true` is set, ensure backend is actually respecting it (check `haplogroupService.js`).
 67: 
 68: ---
+69: 
+70: ### 6. Netbird Binary Disappearance (0-byte file)
+71: **Symptoms**: `netbird: command not found` but apt says installed. `ls -l /usr/bin/netbird` shows 0 bytes.
+72: **Cause**: Failed auto-update or disk write interruption at midnight.
+73: **Fix**:
+74: 1. Remove valid binary: `sudo rm /usr/bin/netbird`
+75: 2. Reinstall: `sudo apt install --reinstall netbird -y`
+76: 3. Check status: `sudo netbird status` (Should auto-reconnect)
+77: 
+78: **Prevention**:
+79: Prevent automatic updates from corrupting the binary again:
+80: ```bash
+81: sudo apt-mark hold netbird
+82: ```
+83: To update in the future: `sudo apt-mark unhold netbird && sudo apt upgrade netbird`.
+84: 
+85: ---
 
 ## 🔍 Diagnostic Commands
 
