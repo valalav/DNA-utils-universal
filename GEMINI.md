@@ -2,6 +2,7 @@
 
 > **SYSTEM IDENTITY**: DNA-utils-universal (Hybrid v2.0)
 > **CONTEXT**: This document is the SINGLE SOURCE OF TRUTH for the AI Agent regarding Infrastructure, Architecture, and Deployment protocols.
+> **ROADMAP**: Refer to `ROADMAP.md` for active feature planning and `docs/designs/` for technical specs.
 
 ---
 

@@ -21,6 +21,10 @@ Always use Context7 MCP when I need library/API documentation, code generation, 
      - Implements "Exact Match Priority" in `/autocomplete` (returns single result if exact match exists).
 
 # INFRASTRUCTURE_TOPOLOGY
+   -## Context Application State
+*   **Active Features**: See `ROADMAP.md` for current development focus.
+*   **Infrastructure**: `130.61.157.122` (Oracle Proxy) <-> `100.101.218.57` (Proxmox Worker)
+*   **Authentication**: `admin` / (See `.env`)
    - **Public Ingress (Oracle VPS)**: `130.61.157.122` (Ubuntu ARM64)
      - Role: Nginx (Docker) Reverse Proxy + Certbot (SSL)
      - **CRITICAL WARNING**: Do NOT run `systemctl restart nginx`. The host's port 80 is occupied by `nginx-proxy` container.
