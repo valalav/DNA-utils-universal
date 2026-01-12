@@ -438,7 +438,20 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
                       {/* Badge & Kit Number Row */}
                       <div className="flex items-center justify-center flex-wrap gap-0.5">
                         {getPanelBadge(query.markers)}
-                        <span className="font-bold text-blue-800 text-sm">{query.kitNumber || 'Query'}</span>
+                        <div className="flex items-center">
+                          <span className="font-bold text-blue-800 text-sm">{query.kitNumber || 'Query'}</span>
+                          {onEditProfile && (
+                            <button
+                              onClick={() => query.kitNumber && onEditProfile(query.kitNumber)}
+                              className="text-gray-400 hover:text-blue-600 transition-colors ml-0.5"
+                              title="Edit profile"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </td>
@@ -446,7 +459,7 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
                     {/* Empty cell for query row */}
                   </td>
                   <td className="border-r border-gray-300 px-2 py-1 text-center w-[150px] max-w-[150px]">
-                    <span className="text-sm font-semibold">{query.name || 'Query Profile'}</span>
+                    <span className="text-sm font-semibold">{query.name || ''}</span>
                   </td>
                   <td className="border-r border-gray-300 px-2 py-1 text-center w-[120px] max-w-[120px]">
                     <span
