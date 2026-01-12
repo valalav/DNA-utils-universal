@@ -163,3 +163,6 @@ Always use **Context7 MCP** for external library documentation. **Protocol**: `r
    - Status: `pm2 status && sudo netbird status`
    - Logs: `pm2 logs`
    - Connect Oracle: `ssh -i private/oracle_openssh_key ubuntu@130.61.157.122`
+
+# INCIDENT_REPORTS
+   - [2026-01-12: Optimization Attempt & Post-Mortem](docs/post_mortems/2026-01-12-optimization-attempt.md) - Docker SHM failure, Deadlocks, and Data Recovery (R1b).

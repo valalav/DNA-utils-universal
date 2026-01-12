@@ -18,8 +18,10 @@ services:
       - "5432:5432"
     command: postgres -c 'shared_buffers=2GB' -c 'effective_cache_size=6GB' -c 'work_mem=256MB' -c 'maintenance_work_mem=1GB' -c 'max_worker_processes=8' -c 'max_parallel_workers=8' -c 'max_parallel_workers_per_gather=4'
     restart: unless-stopped
+    security_opt:
+      - apparmor:unconfined
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d ystr_matcher"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d ystr_matcher" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -35,7 +37,7 @@ services:
       - "6379:6379"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -72,7 +74,7 @@ services:
       - ./backend/logs:/app/logs
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9004/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:9004/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -102,10 +104,10 @@ services:
           devices:
             - driver: nvidia
               count: 1
-              capabilities: [gpu]
+              capabilities: [ gpu ]
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -128,7 +130,7 @@ services:
       - backend
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:3000/api/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -197,7 +199,7 @@ services:
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
     restart: unless-stopped
-    profiles: ["logging"]
+    profiles: [ "logging" ]
 
   logstash:
     image: docker.elastic.co/logstash/logstash:8.11.0
@@ -209,7 +211,7 @@ services:
     depends_on:
       - elasticsearch
     restart: unless-stopped
-    profiles: ["logging"]
+    profiles: [ "logging" ]
 
   kibana:
     image: docker.elastic.co/kibana/kibana:8.11.0
@@ -221,7 +223,7 @@ services:
     depends_on:
       - elasticsearch
     restart: unless-stopped
-    profiles: ["logging"]
+    profiles: [ "logging" ]
 
 volumes:
   postgres_data:

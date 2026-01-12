@@ -32,7 +32,7 @@ imports.forEach(({ file, haplogroup }, index) => {
 
   try {
     const result = execSync(
-      `node "${path.join(__dirname, 'import-csv-to-postgres.js')}" --file "${filePath}" --haplogroup "${haplogroup}"`,
+      `node "${path.join(__dirname, 'import-csv-to-postgres.js')}" --file="${filePath}" --haplogroup="${haplogroup}"`,
       {
         encoding: 'utf-8',
         maxBuffer: 50 * 1024 * 1024, // 50MB buffer

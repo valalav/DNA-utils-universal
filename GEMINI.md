@@ -156,3 +156,8 @@ To update: `unhold` -> `upgrade` -> `hold`.
 
 **Documentation Sync**:
 *   `CLAUDE.md` must be kept synced between Local and Remote (`./YSTR-Genetic-Matcher/CLAUDE.md`).
+
+---
+
+## 6. 📜 Incident Reports
+*   [2026-01-12: Optimization Attempt & Post-Mortem](docs/post_mortems/2026-01-12-optimization-attempt.md) - Analysis of failed Docker SHM/Cluster optimization and subsequent data recovery.
