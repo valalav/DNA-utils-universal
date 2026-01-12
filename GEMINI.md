@@ -4,9 +4,11 @@
 > **CONTEXT**: This document is the SINGLE SOURCE OF TRUTH for the AI Agent regarding Infrastructure, Architecture, and Deployment protocols.
 > **ROADMAP**: Refer to `ROADMAP.md` for active feature planning and `docs/designs/` for technical specs.
 
----
+---Из 
 
-Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.
+Always use **Context7 MCP** for external library documentation (Next.js, PostgreSQL, Express, etc.).
+**Protocol**: `resolve-library-id` (find correct ID) -> `query-docs` (ask specific question).
+Do not guess API methods; verify them with Context7 first.
 
 ## 1. 🌍 Infrastructure Topology & Network Flow
 

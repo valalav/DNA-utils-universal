@@ -1,4 +1,4 @@
-Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.
+Always use **Context7 MCP** for external library documentation. **Protocol**: `resolve-library-id` -> `query-docs`. Verify APIs before guessing.
 
 # PROJECT_IDENTITY
    - DNA-utils-universal | Monorepo/Bioinformatics | High-performance Y-STR matching system (PostgreSQL/Redis/Next.js/CUDA)
