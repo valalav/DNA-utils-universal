@@ -13,6 +13,10 @@ The system operates on a distributed **Hybrid Cloud-Local Mesh** architecture co
 
 ### **Node A: Public Ingress (Oracle VPS)**
 *   **IP**: `130.61.157.122` (Ubuntu ARM64)
+*   **System Identity**: **Dockerized Nginx** (not systemd nginx).
+    *   **CRITICAL WARNING**: Do NOT run `systemctl restart nginx`. The host's port 80 is occupied by `nginx-proxy` container.
+    *   **Config Location**: `~/nginx-proxy/nginx/conf.d/pystr.valalav.ru.conf`.
+    *   **Reload**: Must use Docker commands to reload proxy.
 *   **Hostname**: `hcp.yseq.ru`
 *   **Role**: reverse-proxy, ssl-termination
 *   **Nginx Config**: `~/nginx-proxy/nginx/conf.d/pystr.valalav.ru.conf`
@@ -80,6 +84,13 @@ sudo netbird status
 # Logs
 pm2 logs
 ```
+
+> **CRITICAL NETWORKING NOTE**:
+> On Proxmox CT (Node B), `localhost` / `127.0.0.1` resolution in Next.js Standalone fetch is **UNRELIABLE**.
+> *   **Rule**: ALWAYS use the LAN IP (`192.168.10.170`) for `BACKEND_API_URL` and `HAPLO_API_URL` in `ecosystem.config.js` and `next.config.js`.
+> *   **Symptom**: `fetch failed` (500) on endpoints despite services being up.
+> *   **Fix**: Hardcode `http://192.168.10.170:9005`.
+> *   **Hidden Trap**: `str-matcher/src/middleware.ts` INTERCEPTS `/api/*` requests and ignores `next.config.js` rewrites. It MUST be patched to use `192.168.10.170:9005`.
 
 ### **Frontend Rebuild Protocol (Str-Matcher)**
 Due to standalone mode, you MUST copy static files after build:

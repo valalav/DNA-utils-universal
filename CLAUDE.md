@@ -18,10 +18,13 @@ Always use Context7 MCP when I need library/API documentation, code generation, 
    - database/ -> SQL Schemas & Optimization Functions
    - cuda-predictor/ -> Optional ML Service (FastAPI/PyTorch)
    - ftdna_haplo/ -> Haplogroup Service (Port 9003)
+     - Implements "Exact Match Priority" in `/autocomplete` (returns single result if exact match exists).
 
 # INFRASTRUCTURE_TOPOLOGY
    - **Public Ingress (Oracle VPS)**: `130.61.157.122` (Ubuntu ARM64)
      - Role: Nginx (Docker) Reverse Proxy + Certbot (SSL)
+     - **CRITICAL WARNING**: Do NOT run `systemctl restart nginx`. The host's port 80 is occupied by `nginx-proxy` container.
+     - **Reload**: Use Docker commands (e.g., `docker exec ... nginx -s reload`).
      - Nginx config: `~/nginx-proxy/nginx/conf.d/pystr.valalav.ru.conf`
      - Exposure: `https://pystr.valalav.ru` -> Proxies to Proxmox via Netbird VPN
      - Access: `ssh -i private/oracle_openssh_key ubuntu@130.61.157.122`
@@ -41,6 +44,9 @@ Always use Context7 MCP when I need library/API documentation, code generation, 
 
 # PM2_MANAGEMENT
    - **Config file**: `/home/valalav/DNA-utils-universal/ecosystem.config.js`
+   - **CRITICAL NETWORKING**: On Proxmox CT (Node B), `localhost` resolution is UNRELIABLE.
+     - **Rule**: ALWAYS use the LAN IP (`192.168.10.170`) for `BACKEND_API_URL` in `ecosystem.config.js` and `next.config.js`.
+     - **Fix**: Hardcode `http://192.168.10.170:9005`.
    - **ВАЖНО**: Всегда запускай PM2 из корня проекта:
      ```bash
      cd /home/valalav/DNA-utils-universal
@@ -81,8 +87,33 @@ Always use Context7 MCP when I need library/API documentation, code generation, 
    **Port already in use (EADDRINUSE):**
    ```bash
    sudo fuser -k 3000/tcp 9003/tcp 9005/tcp
+   # Force kill zombie process on port 9003 (common issue)
+   sudo fuser -k -9 9003/tcp
    pm2 restart all
    ```
+
+# OPERATIONAL_LEARNINGS
+   - **Zombie Processes**: If port 9003 is blocked by a root process, `pm2 restart` might fail. Use `sudo fuser -k -9 9003/tcp`.
+   - **Import Logic**: Frontend `SampleManager` uses exclusion patterns (negative lookahead logic) to distinguish `Name` from `Paternal Ancestor Name` during CSV parsing. Always match specific columns before generic ones.
+   - **Bulk Import Tuning**: Use large batch sizes (e.g., 5000) via `scripts/import-csv.js` to minimize `REFRESH MATERIALIZED VIEW` overhead.
+
+   - **Proxy Logic Pitfall (Middleware):**
+   - `str-matcher/src/middleware.ts` manually proxies `/api/*` and acts as the router.
+   - **CRITICAL**: It hardcodes the backend URL if `process.env.BACKEND_API_URL` is missing.
+   - **Fix**: Ensure `middleware.ts` uses `process.env.BACKEND_API_URL || 'http://192.168.10.170:9005'`. Do NOT rely on `next.config.js` rewrites for `/api/` as middleware intercepts them first.
+
+   **PostgreSQL Index Corruption:**
+   - **Symptom**: Duplicate `kit_number` values exist despite `UNIQUE` constraint. `INSERT` works locally but bulk data has duplicates.
+   - **Fix**: 1) Delete duplicates via SQL (keep `MAX(id)`). 2) `REINDEX TABLE ystr_profiles`.
+   - **Prevention**: Avoid massive concurrency during `Direct SQL` imports or ensure hardware stability.
+
+   - **Massive Import Protocol**: For robust bulk loading (>1k records), utilize **Direct SQL** (`scripts/direct_db_import.js`). **CRITICAL**: Temporarily DISABLE triggers (`trigger_refresh_marker_stats`) to prevent deadlocks, then re-enable and manually refresh the view.
+   - **Concurrent Refresh**: Requires a `UNIQUE INDEX` on the materialized view. If refreshing hangs, check for index and stuck queries.
+   - **Redis Disablement**: If Redis is down, set `DISABLE_REDIS=true` in `backend/.env`. ensure `haplogroupService.js` and `admin.js` are patched to respect this flag (conditional initialization).
+
+   **Haplogroup UI Blank Page / API Errors:**
+   1. Check CORS in `ftdna_haplo/server/server.js` (Must allow `192.168.x.x` & `100.x.x.x`).
+   2. Check if port 9003 is zombie: `sudo netstat -tulpn | grep 9003`.
 
 # DEPLOYMENT_NOTES (Internal Node - Proxmox CT 109)
    - **Mode**: Next.js Standalone (output: 'standalone' in next.config.js)
@@ -106,6 +137,14 @@ Always use Context7 MCP when I need library/API documentation, code generation, 
    - Naming: camelCase (JS), snake_case (Python, SQL)
    - Pattern: MVC (Backend), Feature-slices (Frontend)
    - Ref: See `backend/server.js` and `str-matcher/src/store/userSlice.ts`
+
+# PERFORMANCE_RULES (КРИТИЧЕСКИ ВАЖНО!)
+   - **СКОРОСТЬ ВАЖНА!** Этот проект обрабатывает тысячи записей. Любое замедление недопустимо.
+   - **ДУМАЙ О ПОСЛЕДСТВИЯХ** перед изменением SQL функций, циклов, batch-операций.
+   - **НЕ ДОБАВЛЯЙ IF/ELSE внутрь циклов** в PostgreSQL функциях - это замедляет в 100 раз.
+   - **ТЕСТИРУЙ СКОРОСТЬ** после изменений в bulk-операциях.
+   - **НЕ ДАВАЙ НЕПРОВЕРЕННЫЕ КОМАНДЫ** - сначала проверь что они работают.
+   - **СПРАШИВАЙ** прежде чем делать, если не уверен в последствиях.
 
 # CRITICAL_COMMANDS
    - Build: `cd str-matcher && npm run build` (Frontend)

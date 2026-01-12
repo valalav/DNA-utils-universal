@@ -55,7 +55,19 @@ pm2 start ecosystem.config.js --env production
 pm2 save
 ```
 
----
+56: ```
+57: 
+58: ### 5. Import Hangs or Deadlocks (Bulk Insert)
+59: **Symptoms**: Import script hangs indefinitely logs "Inserting...", backend logs show timeout or deadlocks.
+60: 
+61: **Cause**: The `bulk_insert_profiles` function triggers a `REFRESH MATERIALIZED VIEW` for every row/batch, causing extensive locking.
+62: 
+63: **Fix**:
+64: 1.  **Kill Locks**: `node scripts/kill_locks.js` or `node scripts/nuke_db_connections.js`.
+65: 2.  **Use Direct Protocol**: Follow **Method C** in `DATA-IMPORT-GUIDE.md` (Disable Triggers -> Import -> Enable -> Refresh).
+66: 3.  **Check Redis**: If `DISABLE_REDIS=true` is set, ensure backend is actually respecting it (check `haplogroupService.js`).
+67: 
+68: ---
 
 ## 🔍 Diagnostic Commands
 

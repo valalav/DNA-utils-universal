@@ -19,7 +19,7 @@
 curl http://localhost:9003/api/health
 
 # Проверить CORS заголовки
-curl -H "Origin: http://localhost:9002" \
+curl -H "Origin: http://localhost:3000" \
      -H "Access-Control-Request-Method: GET" \
      -X OPTIONS \
      http://localhost:9003/api/check-subclade
@@ -36,7 +36,7 @@ curl -H "Origin: http://localhost:9002" \
 2. Проверить CORS настройки в `ftdna_haplo/server/server.js`:
    ```javascript
    const allowedOrigins = [
-     'http://localhost:9002',  // STR Matcher
+     'http://localhost:3000',  // STR Matcher
      'http://localhost:5173'   // FTDNA Client
    ];
    ```
@@ -47,7 +47,7 @@ curl -H "Origin: http://localhost:9002" \
    NEXT_PUBLIC_API_URL=http://localhost:9003
    
    # В ftdna_haplo/.env
-   CORS_ORIGIN=http://localhost:9002,http://localhost:5173
+   CORS_ORIGIN=http://localhost:3000,http://localhost:5173
    ```
 
 ### ❌ Медленная загрузка данных
@@ -108,12 +108,12 @@ pm2 jlist | jq -r '.[] | "\(.name): \(.pm2_env.status)"'
 
 # Проверка портов
 echo "🌐 Открытые порты:"
-netstat -tulpn | grep -E "(9002|9003|5173)"
+netstat -tulpn | grep -E "(3000|9003|5173)"
 
 # Проверка API эндпоинтов
 echo "🔗 API эндпоинтов:"
 curl -s http://localhost:9003/api/health || echo "❌ FTDNA Haplo API недоступен"
-curl -s http://localhost:9002/api/health || echo "❌ STR Matcher недоступен"
+curl -s http://localhost:3000/api/health || echo "❌ STR Matcher недоступен"
 
 # Проверка дискового пространства
 echo "💿 Дисковое пространство:"
@@ -158,7 +158,7 @@ app.use((req, res, next) => {
 **Полная ошибка:**
 ```
 Access to fetch at 'http://localhost:9003/api/check-subclade' 
-from origin 'http://localhost:9002' has been blocked by CORS policy
+from origin 'http://localhost:3000' has been blocked by CORS policy
 ```
 
 **Причины и решения:**
@@ -174,7 +174,7 @@ from origin 'http://localhost:9002' has been blocked by CORS policy
    // ftdna_haplo/server/server.js - ПРАВИЛЬНАЯ настройка
    const corsOptions = {
      origin: [
-       'http://localhost:9002',  // STR Matcher
+       'http://localhost:3000',  // STR Matcher
        'http://localhost:5173',  // FTDNA Client  
        'http://localhost:3000'   // Если используется dev сервер
      ],

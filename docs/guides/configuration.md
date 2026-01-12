@@ -26,7 +26,7 @@ DNA-utils-universal/
 
 ```bash
 # Порты микросервисов
-STR_MATCHER_PORT=9002
+STR_MATCHER_PORT=3000
 FTDNA_HAPLO_PORT=9003  
 FTDNA_CLIENT_PORT=5173
 
@@ -110,11 +110,11 @@ module.exports = {
       max_memory_restart: process.env.PM2_MAX_MEMORY_RESTART || '1G',
       env: {
         NODE_ENV: 'production',
-        PORT: process.env.STR_MATCHER_PORT || 9002
+        PORT: process.env.STR_MATCHER_PORT || 3000
       },
       env_development: {
         NODE_ENV: 'development',
-        PORT: 9002
+        PORT: 3000
       }
     },
     {
@@ -379,10 +379,10 @@ if (process.env.NODE_ENV !== 'production') {
 
 ```bash
 # Проверить доступность API FTDNA Haplo из STR Matcher
-curl http://localhost:9002/api/haplo/health
+curl http://localhost:3000/api/haplo/health
 
 # Проверить CORS
-curl -H "Origin: http://localhost:9002" \
+curl -H "Origin: http://localhost:3000" \
      -H "Access-Control-Request-Method: POST" \
      -X OPTIONS \
      http://localhost:9003/api/check-subclade

@@ -8,54 +8,64 @@ const Queue = require('bull');
 const router = express.Router();
 
 // Initialize job queue for batch processing
-const batchQueue = new Queue('batch processing', process.env.REDIS_URL || 'redis://localhost:6379');
+// Initialize job queue for batch processing
+let batchQueue = null;
+if (process.env.DISABLE_REDIS !== 'true') {
+  batchQueue = new Queue('batch processing', process.env.REDIS_URL || 'redis://localhost:6379');
+} else {
+  console.log('⚠️ Batch Queue disabled because Redis is disabled');
+}
 
 // Configure queue processing
-batchQueue.process('bulk-insert', 5, async (job) => {
-  const { profiles, batchId } = job.data;
+// Configure queue processing
+if (batchQueue) {
+  batchQueue.process('bulk-insert', 5, async (job) => {
+    const { profiles, batchId } = job.data;
 
-  try {
-    job.progress(0);
+    try {
+      job.progress(0);
 
-    // Process profiles in smaller chunks to avoid memory issues
-    const chunkSize = 1000;
-    let processed = 0;
-    const results = [];
+      // Process profiles in smaller chunks to avoid memory issues
+      const chunkSize = 1000;
+      let processed = 0;
+      const results = [];
 
-    for (let i = 0; i < profiles.length; i += chunkSize) {
-      const chunk = profiles.slice(i, i + chunkSize);
+      for (let i = 0; i < profiles.length; i += chunkSize) {
+        const chunk = profiles.slice(i, i + chunkSize);
 
-      const result = await matchingService.bulkInsertProfiles(chunk);
-      results.push(result);
+        const result = await matchingService.bulkInsertProfiles(chunk);
+        results.push(result);
 
-      processed += chunk.length;
-      const progress = Math.round((processed / profiles.length) * 100);
-      job.progress(progress);
+        processed += chunk.length;
+        const progress = Math.round((processed / profiles.length) * 100);
+        job.progress(progress);
 
-      // Small delay to prevent overwhelming the database
-      await new Promise(resolve => setTimeout(resolve, 100));
+        // Small delay to prevent overwhelming the database
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      return {
+        batchId,
+        totalProcessed: processed,
+        results
+      };
+
+    } catch (error) {
+      console.error(`❌ Batch processing error for ${batchId}:`, error);
+      throw error;
     }
+  });
+}
 
-    return {
-      batchId,
-      totalProcessed: processed,
-      results
-    };
+if (batchQueue) {
+  batchQueue.process('genetic-distance-optimization', 1, async (job) => {
+    const { sampleSize, targetDistance } = job.data;
 
-  } catch (error) {
-    console.error(`❌ Batch processing error for ${batchId}:`, error);
-    throw error;
-  }
-});
+    try {
+      job.progress(0);
 
-batchQueue.process('genetic-distance-optimization', 1, async (job) => {
-  const { sampleSize, targetDistance } = job.data;
-
-  try {
-    job.progress(0);
-
-    // Optimize genetic distance calculations for large datasets
-    const query = `
+      // Optimize genetic distance calculations for large datasets
+      const query = `
       WITH sample_profiles AS (
         SELECT kit_number, markers
         FROM ystr_profiles
@@ -81,21 +91,22 @@ batchQueue.process('genetic-distance-optimization', 1, async (job) => {
       FROM distance_matrix
     `;
 
-    const result = await executeQuery(query, [sampleSize, targetDistance]);
+      const result = await executeQuery(query, [sampleSize, targetDistance]);
 
-    job.progress(100);
+      job.progress(100);
 
-    return {
-      optimization_stats: result.rows[0],
-      sample_size: sampleSize,
-      target_distance: targetDistance
-    };
+      return {
+        optimization_stats: result.rows[0],
+        sample_size: sampleSize,
+        target_distance: targetDistance
+      };
 
-  } catch (error) {
-    console.error('❌ Genetic distance optimization error:', error);
-    throw error;
-  }
-});
+    } catch (error) {
+      console.error('❌ Genetic distance optimization error:', error);
+      throw error;
+    }
+  });
+}
 
 // GET /api/admin/stats - Comprehensive system statistics
 router.get('/stats',
@@ -202,6 +213,12 @@ router.post('/batch-process',
       removeOnFail: 5
     };
 
+    if (!batchQueue) {
+      return res.status(503).json({
+        error: 'Batch processing unavailable (Redis disabled)'
+      });
+    }
+
     const job = await batchQueue.add('bulk-insert', {
       profiles,
       batchId
@@ -223,6 +240,7 @@ router.get('/batch-status/:jobId',
   asyncHandler(async (req, res) => {
     const { jobId } = req.params;
 
+    if (!batchQueue) return res.status(404).json({ error: 'Queue disabled' });
     const job = await batchQueue.getJob(jobId);
 
     if (!job) {
@@ -315,6 +333,10 @@ router.post('/genetic-distance-benchmark',
       });
     }
 
+    if (!batchQueue) {
+      return res.status(503).json({ error: 'Queue unavailable' });
+    }
+
     // Add optimization job to queue
     const job = await batchQueue.add('genetic-distance-optimization', {
       sampleSize,
@@ -340,6 +362,8 @@ router.post('/genetic-distance-benchmark',
 // GET /api/admin/queue-stats - Queue statistics
 router.get('/queue-stats',
   asyncHandler(async (req, res) => {
+    if (!batchQueue) return res.json({ success: true, queue_statistics: { status: 'disabled' }, active_jobs: [], recent_failures: [] });
+
     const [waiting, active, completed, failed] = await Promise.all([
       batchQueue.getWaiting(),
       batchQueue.getActive(),
@@ -513,11 +537,15 @@ router.get('/health-detailed',
     }
 
     // Queue health
-    try {
-      const queueHealth = await batchQueue.checkHealth();
-      checks.queue = { status: 'healthy', ...queueHealth };
-    } catch (error) {
-      checks.queue = { status: 'unhealthy', error: error.message };
+    if (batchQueue) {
+      try {
+        const queueHealth = await batchQueue.checkHealth();
+        checks.queue = { status: 'healthy', ...queueHealth };
+      } catch (error) {
+        checks.queue = { status: 'unhealthy', error: error.message };
+      }
+    } else {
+      checks.queue = { status: 'disabled' };
     }
 
     // CUDA predictor service

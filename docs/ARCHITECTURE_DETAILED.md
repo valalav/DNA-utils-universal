@@ -17,7 +17,7 @@ graph TD
     
     subgraph "Server Side"
         Frontend --> |Proxy /api/*| Haplo[Legacy Haplo Service<br/>(ftdna_haplo :9003)]
-        Frontend --> |CORS /api/*| Backend[Backend Service<br/>(backend :9004)]
+        Frontend --> |CORS /api/*| Backend[Backend Service<br/>(backend :9005)]
         
         Backend --> Postgres[(PostgreSQL)]
         Backend --> Redis[(Redis Cache)]
@@ -32,7 +32,7 @@ graph TD
 
 ### 1. Frontend & Client-Side Engine (`str-matcher`)
 **Стек:** Next.js 14, React, TypeScript, Redux Toolkit, Web Workers.
-**Порт:** `:3000` (Dev), `:9002` (Prod).
+**Порт:** `:3000`.
 
 **Назначение:**
 *   **UI/UX:** Основной интерфейс пользователя.
@@ -46,7 +46,7 @@ graph TD
 
 ### 2. Backend Service (`backend`)
 **Стек:** Node.js, Express, PostgreSQL, Redis, BullMQ.
-**Порт:** `:9004`.
+**Порт:** `:9005`.
 
 **Назначение:**
 *   **Глобальный поиск:** Поиск по миллионам профилей с использованием GIST-индексов PostgreSQL (`find_matches_v5`).
@@ -80,7 +80,7 @@ graph TD
 
 ### 2. Глобальный поиск (Server-Side)
 1.  Пользователь отправляет запрос на поиск по глобальной базе.
-2.  Frontend делает прямой запрос к `Backend Service` (:9004).
+2.  Frontend делает прямой запрос к `Backend Service` (:9005).
 3.  SQL-функция `find_matches_v5` выполняет поиск с использованием GIST-индекса.
 4.  Результаты возвращаются пагинацией.
 
@@ -114,13 +114,13 @@ graph TD
 | App Name | Path | Port | Env Vars |
 |----------|------|------|----------|
 | `str-matcher-app` | `./str-matcher` | `9002` | `HAPLO_API_URL` |
-| `dna-backend` | `./backend` | `9004` | `DATABASE_URL`, `REDIS_URL` |
+| `dna-backend` | `./backend` | `9005` | `DATABASE_URL`, `REDIS_URL` |
 | `ftdna-haplo-app` | `./ftdna_haplo` | `9003` | `PORT` |
 
 ---
 
 ## 🔒 Безопасность
 
-1.  **CORS:** Backend (:9004) разрешает запросы только с доверенных источников (Frontend).
+1.  **CORS:** Backend (:9005) разрешает запросы только с доверенных источников (Frontend).
 2.  **Proxy:** Изоляция Legacy сервиса за Next.js Rewrites скрывает внутреннюю структуру API.
 3.  **API Keys:** Административные функции Backend защищены Static API Keys.

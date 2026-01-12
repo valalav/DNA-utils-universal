@@ -33,7 +33,8 @@ module.exports = {
         NODE_ENV: "production",
         PORT: 3000,
         HOSTNAME: "0.0.0.0",
-        HAPLO_API_URL: "http://localhost:9003"
+        HAPLO_API_URL: "http://127.0.0.1:9003",
+        BACKEND_API_URL: "http://192.168.10.170:9005"
       }
     }
   ]

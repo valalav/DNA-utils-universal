@@ -5,40 +5,52 @@ class MatchingService {
   constructor() {
     this.redisConnected = false;
 
-    // Initialize Redis client for caching
-    this.redis = Redis.createClient({
-      url: process.env.REDIS_URL || 'redis://localhost:6379',
-      socket: {
-        connectTimeout: 5000,
-        reconnectStrategy: (retries) => {
-          if (retries > 3) {
-            console.warn('⚠️ Redis unavailable, caching disabled');
-            return false; // Stop reconnecting
+    // Initialize Redis client for caching (Optional)
+    // To disable Redis, set DISABLE_REDIS=true in .env
+    const redisEnabled = process.env.DISABLE_REDIS !== 'true';
+
+    if (redisEnabled) {
+      this.redis = Redis.createClient({
+        url: process.env.REDIS_URL || 'redis://localhost:6379',
+        socket: {
+          connectTimeout: 5000,
+          reconnectStrategy: (retries) => {
+            if (retries > 3) {
+              console.warn('⚠️ Redis unavailable, caching disabled');
+              return false; // Stop reconnecting
+            }
+            return Math.min(retries * 100, 3000);
           }
-          return Math.min(retries * 100, 3000);
         }
-      }
-    });
+      });
 
-    this.redis.on('error', (err) => {
-      this.redisConnected = false;
-      console.error('Redis connection error:', err.message);
-    });
+      this.redis.on('error', (err) => {
+        this.redisConnected = false;
+        // Reduce log spam
+        if (!this.lastRedisError || Date.now() - this.lastRedisError > 5000) {
+          console.error('Redis connection error:', err.message);
+          this.lastRedisError = Date.now();
+        }
+      });
 
-    this.redis.on('connect', () => {
-      this.redisConnected = true;
-      console.log('✅ Redis connected');
-    });
+      this.redis.on('connect', () => {
+        this.redisConnected = true;
+        console.log('✅ Redis connected');
+      });
 
-    this.redis.on('end', () => {
-      this.redisConnected = false;
-      console.warn('⚠️ Redis disconnected');
-    });
+      this.redis.on('end', () => {
+        this.redisConnected = false;
+        console.warn('⚠️ Redis disconnected');
+      });
 
-    this.redis.connect().catch((err) => {
-      this.redisConnected = false;
-      console.warn('⚠️ Redis connection failed, caching disabled:', err.message);
-    });
+      this.redis.connect().catch((err) => {
+        this.redisConnected = false;
+        console.warn('⚠️ Redis connection failed, caching disabled:', err.message);
+      });
+    } else {
+      console.log('⚠️ Redis disabled via config (DISABLE_REDIS=true)');
+      this.redis = null;
+    }
   }
 
   // Safe Redis operation wrapper - returns null if Redis unavailable

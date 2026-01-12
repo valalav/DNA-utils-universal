@@ -270,7 +270,12 @@ Access at: `http://localhost:3000/samples`
 - Modify any fields
 - Click "Update Sample"
 
-#### 3. **Bulk Import**
+#### 3. **Delete Sample**
+- In Edit mode, click the red "Delete" button
+- Confirm the action in the popup dialog
+- **Warning**: This action cannot be undone
+
+#### 4. **Bulk Import**
 
 **From Clipboard:**
 1. Copy data from Excel with headers
@@ -356,7 +361,7 @@ Access at: `http://localhost:3000/samples`
 
 ### Create API Key
 ```bash
-curl -X POST http://localhost:9004/api/admin/keys \
+curl -X POST http://localhost:9005/api/admin/keys \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_MASTER_KEY" \
   -d '{
@@ -370,7 +375,7 @@ curl -X POST http://localhost:9004/api/admin/keys \
 
 ### Add Sample
 ```bash
-curl -X POST http://localhost:9004/api/samples \
+curl -X POST http://localhost:9005/api/samples \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_API_KEY" \
   -d '{
@@ -386,7 +391,7 @@ curl -X POST http://localhost:9004/api/samples \
 
 ### View Audit Log
 ```bash
-curl http://localhost:9004/api/admin/audit?limit=10 \
+curl http://localhost:9005/api/admin/audit?limit=10 \
   -H "X-API-Key: YOUR_MASTER_KEY"
 ```
 

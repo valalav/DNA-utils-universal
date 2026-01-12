@@ -24,6 +24,12 @@ DNA-utils-universal использует **гибридную модель да�
 *   **Память:** Рекомендуется до 500k профилей (ограничение браузера).
 *   **Персистентность:** Данные удаляются при очистке кэша браузера.
 
+### 🧠 Умный парсинг колонок (Smart Parsing)
+Система автоматически распознает вариации названий колонок.
+**Важное правило приоритетов:**
+*   **Paternal Ancestor Name**: Ищется первым (ключи: 'paternal ancestor', 'ancestor name').
+*   **Name**: Ищется вторым. Система **исключает** колонки, содержащие 'paternal' или 'ancestor', чтобы случайно не захватить имя предка вместо имени владельца кита.
+
 ---
 
 ## ☁️ 2. Server-Side Data (Backend)
@@ -62,29 +68,39 @@ CREATE TABLE IF NOT EXISTS ystr_profiles (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Функция для batch insert (используется скриптами)
-CREATE OR REPLACE FUNCTION bulk_insert_profiles(profiles_json JSONB)
-RETURNS TABLE(bulk_insert_profiles BIGINT) AS $$
+-- Optimized function for bulk insert with conflict resolution
+CREATE OR REPLACE FUNCTION bulk_insert_profiles(profiles_data JSONB)
+RETURNS INTEGER
+LANGUAGE plpgsql
+AS $$
 DECLARE
-    count BIGINT;
+    inserted_count INTEGER := 0;
+    profile JSONB;
 BEGIN
-    WITH inserted AS (
+    FOR profile IN SELECT jsonb_array_elements(profiles_data)
+    LOOP
         INSERT INTO ystr_profiles (kit_number, name, country, haplogroup, markers)
-        SELECT 
-            p->>'kit_number',
-            p->>'name',
-            p->>'country',
-            p->>'haplogroup',
-            p->'markers'
-        FROM jsonb_array_elements(profiles_json) AS p
-        ON CONFLICT DO NOTHING -- Игнорировать дубликаты
-        RETURNING 1
-    )
-    SELECT COUNT(*) INTO count FROM inserted;
-    
-    RETURN QUERY SELECT count;
+        VALUES (
+            profile->>'kit_number',
+            profile->>'name',
+            profile->>'country',
+            profile->>'haplogroup',
+            profile->'markers'
+        )
+        ON CONFLICT (kit_number)
+        DO UPDATE SET
+            name = EXCLUDED.name,
+            country = EXCLUDED.country,
+            haplogroup = EXCLUDED.haplogroup,
+            markers = EXCLUDED.markers,
+            updated_at = CURRENT_TIMESTAMP;
+
+        inserted_count := inserted_count + 1;
+    END LOOP;
+
+    RETURN inserted_count;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 ```
 
 ### 🚀 Import Procedures
@@ -117,6 +133,17 @@ node backend/scripts/import-csv-to-postgres.js \
 *   `--haplogroup`: Присваиваемая гаплогруппа.
 *   `--dry-run`: Прогон без записи в БД.
 *   `--skip-validation`: Отключение проверок валидности.
+
+#### Метод C: Direct SQL Mass Import (Recommended for Large Datasets)
+Для импорта больших объемов данных (>1000 записей) используйте прямой SQL скрипт, чтобы избежать тайм-аутов HTTP и блокировок триггеров.
+
+**Protocol:**
+1.  **Disable Triggers** (Prevents deadlocks): `node scripts/disable_triggers.js`
+2.  **Run Import** (Raw SQL, Deduplicated): `node scripts/direct_db_import.js`
+3.  **Enable Triggers**: `node scripts/enable_triggers.js`
+4.  **Manual Refresh**: `node scripts/refresh_view.js`
+
+*Этот метод обходит API и пишет напрямую в БД, что значительно быстрее и надежнее.*
 
 ---
 

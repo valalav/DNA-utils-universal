@@ -36,8 +36,7 @@
 A:
 *   `3000`: Frontend (Основное приложение).
 *   `9003`: Legacy Haplo Service (API гаплогрупп).
-*   `9004`: Backend API (Development).
-*   `9005`: Backend API (Production).
+*   `9005`: Backend API (Production & Dev).
     *   **Импорт**: Можно временно импортировать свои профили (кнопка "Импорт профилей") для сравнения с глобальной базой.
 
 ### 2. Client-Side Search (Классический)
@@ -132,5 +131,4 @@ A:
 *   `3000`: Frontend (Основное приложение).
 *   `5173`: Haplogroup Viewer (Local Dev).
 *   `9003`: Legacy Haplo Service (API гаплогрупп).
-*   `9004`: Backend API (Development).
-*   `9005`: Backend API (Production).
+*   `9005`: Backend API (Production & Dev).

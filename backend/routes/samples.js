@@ -16,6 +16,7 @@ const createSampleSchema = Joi.object({
 });
 
 const updateSampleSchema = Joi.object({
+  kitNumber: Joi.string().optional(), // Allow kitNumber in body (ignored in favor of URL param)
   name: Joi.string().allow('').max(100),
   country: Joi.string().allow('').max(50),
   haplogroup: Joi.string().allow('').max(50),
@@ -32,7 +33,8 @@ const bulkSamplesSchema = Joi.object({
       haplogroup: Joi.string().allow('').max(50),
       markers: Joi.object().required().min(1)
     })
-  ).required().min(1).max(5000)
+  ).required().min(1).max(5000),
+  replaceExisting: Joi.boolean().default(true) // If true, update existing records
 });
 
 /**
@@ -46,7 +48,7 @@ router.post('/bulk',
   requireApiKey('samples.create'),
   validateRequest(bulkSamplesSchema),
   asyncHandler(async (req, res) => {
-    const { samples } = req.body;
+    const { samples, replaceExisting = true } = req.body;
     const startTime = Date.now();
 
     try {

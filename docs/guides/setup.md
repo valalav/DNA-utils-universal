@@ -67,16 +67,16 @@ cd ../..
 ```bash
 cp .env.example .env
 # Отредактируйте .env:
-# BACKEND_PORT=9004
+# BACKEND_PORT=9005
 # HAPLO_PORT=9003
-# FRONTEND_PORT=9002
+# FRONTEND_PORT=3000
 ```
 
 ### 4. Запуск системы
 
 Система состоит из 3-х сервисов:
-1. **Backend** (Port 9004) - Основной API и база данных.
-2. **STR Matcher** (Port 9002) - Основной Frontend.
+1. **Backend** (Port 9005) - Основной API и база данных.
+2. **STR Matcher** (Port 3000) - Основной Frontend.
 3. **Legacy Haplo** (Port 9003) - Справочник гаплогрупп.
 
 #### Вариант А: Запуск через корневой скрипт (если настроен)
@@ -98,8 +98,8 @@ cd ftdna_haplo/server && npm run dev
 ```
 
 **Проверка работоспособности**:
-- **Backend**: http://localhost:9004/health
-- **Frontend**: http://localhost:9002
+- **Backend**: http://localhost:9005/health
+- **Frontend**: http://localhost:3000
 - **Legacy**: http://localhost:9003/api/health
 
 **Тестирование производительности** ⭐ НОВОЕ:
@@ -202,7 +202,7 @@ DEV_API_URL=http://localhost:9003/api
 PROD_API_URL=https://your-domain.com/api
 
 # CORS origins
-DEV_ALLOWED_ORIGINS=http://localhost:9002,http://localhost:5173
+DEV_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 PROD_ALLOWED_ORIGINS=https://your-domain.com,https://haplo.your-domain.com
 
 # Опциональные настройки
@@ -217,7 +217,7 @@ LOG_LEVEL=info
 NODE_ENV=development
 HOST_IP=localhost
 API_URL=http://localhost:9003/api
-ALLOWED_ORIGINS=http://localhost:9002,http://localhost:5173
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 DEBUG=true
 ```
 
@@ -305,7 +305,7 @@ pm2 logs haplo-client
 # Только STR Matcher
 cd str-matcher
 npm run dev
-# Доступен на http://localhost:9002
+# Доступен на http://localhost:3000
 
 # Только FTDNA Haplo API
 cd ftdna_haplo
@@ -380,7 +380,7 @@ curl "http://localhost:9003/api/autocomplete?term=R-M"
 #### Тест интеграции STR Matcher ↔ FTDNA Haplo
 ```bash
 # Открыть STR Matcher
-open http://localhost:9002
+open http://localhost:3000
 
 # 1. Загрузить тестовые данные
 # 2. Выполнить поиск по Kit Number
@@ -396,12 +396,12 @@ open http://localhost:9002
 #### Порты заняты
 ```bash
 # Проверка занятых портов
-netstat -tulpn | grep :9002
+netstat -tulpn | grep :3000
 netstat -tulpn | grep :9003  
 netstat -tulpn | grep :5173
 
 # Освобождение портов
-sudo pkill -f "node.*9002"
+sudo pkill -f "node.*3000"
 sudo pkill -f "node.*9003"
 sudo pkill -f "node.*5173"
 
@@ -530,7 +530,7 @@ RUN npm ci --only=production
 COPY str-matcher .
 RUN npm run build
 
-EXPOSE 9002
+EXPOSE 3000
 CMD ["npm", "start"]
 ```
 
@@ -545,7 +545,7 @@ services:
       context: .
       dockerfile: str-matcher/Dockerfile
     ports:
-      - "9002:9002"
+      - "3000:3000"
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=http://ftdna-haplo:9003/api

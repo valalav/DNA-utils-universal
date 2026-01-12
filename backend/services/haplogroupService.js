@@ -6,15 +6,28 @@ const { spawn } = require('child_process');
 
 class HaplogroupService {
   constructor() {
-    this.redis = Redis.createClient({
-      url: process.env.REDIS_URL || 'redis://localhost:6379'
-    });
+    if (process.env.DISABLE_REDIS === 'true') {
+      console.log('⚠️ Redis disabled for haplogroupService via config (DISABLE_REDIS=true)');
+      this.redis = {
+        get: async () => null,
+        set: async () => { },
+        setEx: async () => { },
+        del: async () => { },
+        keys: async () => [],
+        on: () => { },
+        connect: async () => { }
+      };
+    } else {
+      this.redis = Redis.createClient({
+        url: process.env.REDIS_URL || 'redis://localhost:6379'
+      });
 
-    this.redis.on('error', (err) => {
-      console.error('Redis connection error:', err);
-    });
+      this.redis.on('error', (err) => {
+        console.error('Redis connection error:', err);
+      });
 
-    this.redis.connect().catch(console.error);
+      this.redis.connect().catch(console.error);
+    }
 
     // CUDA predictor service configuration
     this.cudaServiceUrl = process.env.CUDA_PREDICTOR_URL || 'http://localhost:8080';

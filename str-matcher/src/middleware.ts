@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-const BACKEND_URL = 'http://127.0.0.1:9004'
+const BACKEND_URL = process.env.BACKEND_API_URL || 'http://192.168.10.170:9005'
 
 export async function middleware(request: NextRequest) {
   // Обрабатываем только запросы к /api/*
@@ -10,7 +10,7 @@ export async function middleware(request: NextRequest) {
 
     // Извлекаем ключ из query параметров (пробуем разные имена)
     const apiKeyFromQuery = request.nextUrl.searchParams.get('_t') || // token
-                           request.nextUrl.searchParams.get('key')
+      request.nextUrl.searchParams.get('key')
 
     // Удаляем ключ из параметров для бэкенда (чтобы не светить в логах)
     const searchParams = new URLSearchParams(request.nextUrl.searchParams)
@@ -73,7 +73,7 @@ export async function middleware(request: NextRequest) {
       })
 
       const data = await response.text()
-      
+
       return new NextResponse(data, {
         status: response.status,
         headers: {

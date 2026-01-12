@@ -45,6 +45,24 @@ const ALLOWED_COLUMNS = new Set([
   ...COMMON_STR_MARKERS
 ]);
 
+// Helper function to find column value by flexible key matching
+// This properly distinguishes "Name" from "Paternal Ancestor Name"
+const findColumnValue = (row: Record<string, any>, patterns: string[], excludePatterns: string[] = []): string => {
+  const keys = Object.keys(row);
+  for (const key of keys) {
+    const lowerKey = key.toLowerCase();
+    // Check if key matches any exclude pattern first
+    if (excludePatterns.some(ep => lowerKey.includes(ep.toLowerCase()))) {
+      continue;
+    }
+    // Check if key matches any include pattern
+    if (patterns.some(p => lowerKey.includes(p.toLowerCase()))) {
+      return row[key]?.toString().trim() || '';
+    }
+  }
+  return '';
+};
+
 const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = '', initialKitNumber }) => {
   const [mode, setMode] = useState<'add' | 'edit' | 'bulk'>(initialKitNumber ? 'edit' : 'add');
   const [sample, setSample] = useState<Sample>({
@@ -72,6 +90,9 @@ const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = '', 
     inserted: number;
     skipped: number;
   } | null>(null);
+
+  // Replace existing samples flag
+  const [replaceExisting, setReplaceExisting] = useState(true);
 
   // Fetch sample for editing
   const fetchSample = useCallback(async (kitNumber: string) => {
@@ -125,8 +146,13 @@ const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = '', 
     setMessage(null);
 
     try {
-      const response = await fetch(`${backendUrl}/api/samples`, {
-        method: 'POST',
+      const method = mode === 'edit' ? 'PUT' : 'POST';
+      const url = mode === 'edit'
+        ? `${backendUrl}/api/samples/${sample.kitNumber}`
+        : `${backendUrl}/api/samples`;
+
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
           'X-API-Key': apiKey
@@ -181,17 +207,17 @@ const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = '', 
       const samples: Sample[] = [];
 
       parsed.data.forEach((row: any) => {
-        // Extract kit number
-        const kitNumber = row.kitNumber || row.kit_number || row.KitNumber || row['Kit Number'] || row.kitno;
+        // Extract kit number using flexible matching
+        const kitNumber = findColumnValue(row, ['kit number', 'kitnumber', 'kit_number', 'kit', 'kitno']);
 
         if (!kitNumber) {
           return; // Skip rows without kit number
         }
 
-        // Extract basic info
-        const name = row.name || row.Name || row.fullname || row['Full Name'] || '';
-        const country = row.country || row.Country || row.location || row.Location || '';
-        const haplogroup = row.haplogroup || row.Haplogroup || row['FTDNA HG'] || row.Yfull || '';
+        // Extract basic info - use exact column name "Name" (not "Paternal Ancestor Name")
+        const name = row['Name'] || '';
+        const country = row['Country'] || row['country'] || '';
+        const haplogroup = row['Haplogroup'] || row['haplogroup'] || '';
 
         // Extract markers
         const markers: Record<string, string> = {};
@@ -222,6 +248,53 @@ const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = '', 
       setMessage({ type: 'error', text: `Failed to parse: ${error instanceof Error ? error.message : 'Unknown error'}` });
     }
   }, [clipboardText]);
+
+  // Delete sample
+  const deleteSample = useCallback(async () => {
+    if (!sample.kitNumber.trim()) {
+      setMessage({ type: 'error', text: 'Kit Number is required' });
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to DELETE sample ${sample.kitNumber}? This action cannot be undone.`)) {
+      return;
+    }
+
+    setLoading(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch(`${backendUrl}/api/samples/${sample.kitNumber}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': apiKey
+        }
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || error.error || 'Failed to delete sample');
+      }
+
+      const data = await response.json();
+      setMessage({ type: 'success', text: `Sample ${sample.kitNumber} deleted successfully` });
+
+      // Clear form
+      setSample({
+        kitNumber: '',
+        name: '',
+        country: '',
+        haplogroup: '',
+        markers: {}
+      });
+
+    } catch (error) {
+      setMessage({ type: 'error', text: `Failed to delete: ${error instanceof Error ? error.message : 'Unknown error'}` });
+    } finally {
+      setLoading(false);
+    }
+  }, [sample.kitNumber, apiKey, backendUrl]);
 
   // Upload parsed samples using bulk API (optimized for 1000+ samples)
   // Supports chunked upload for datasets > 2000 samples
@@ -266,7 +339,7 @@ const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = '', 
             'Content-Type': 'application/json',
             'X-API-Key': apiKey
           },
-          body: JSON.stringify({ samples: chunk })
+          body: JSON.stringify({ samples: chunk, replaceExisting })
         });
 
         const data = await response.json();
@@ -301,7 +374,7 @@ const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = '', 
       setLoading(false);
       setUploadProgress(null);
     }
-  }, [parsedSamples, apiKey, backendUrl]);
+  }, [parsedSamples, apiKey, backendUrl, replaceExisting]);
 
   // Handle CSV file upload
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -395,26 +468,22 @@ const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = '', 
 
       parsed.data.forEach((row: any) => {
         // Filter: skip rows without Haplogroup
-        const haplogroup = row['Haplogroup'] || row.haplogroup || '';
+        const haplogroup = findColumnValue(row, ['haplogroup', 'haplo']);
         if (!haplogroup.trim()) {
           skippedNoHaplogroup++;
           return;
         }
 
         // Extract kit number
-        const kitNumber = row['Kit Number'] || row.kitNumber || row.kit_number || row.KitNumber || '';
-        if (!kitNumber.toString().trim()) {
+        const kitNumber = findColumnValue(row, ['kit number', 'kitnumber', 'kit_number', 'kit']);
+        if (!kitNumber.trim()) {
           skippedNoKit++;
           return;
         }
 
-        // Extract basic info (only allowed columns)
-        const name = row['Name'] || row.name || '';
-        const paternalAncestor = row['Paternal Ancestor Name'] || '';
-        const country = row['Country'] || row.country || '';
-
-        // Combine name with paternal ancestor if available
-        const fullName = paternalAncestor ? `${name} (${paternalAncestor})` : name;
+        // Extract basic info - use exact column name "Name" (not "Paternal Ancestor Name")
+        const name = row['Name'] || '';
+        const country = row['Country'] || '';
 
         // Extract markers (only STR markers)
         const markers: Record<string, string> = {};
@@ -422,8 +491,8 @@ const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = '', 
           const trimmedKey = key.trim();
           // Check if it's an allowed marker column
           if (ALLOWED_COLUMNS.has(trimmedKey) &&
-              (trimmedKey.startsWith('DYS') || trimmedKey.startsWith('Y-') ||
-               trimmedKey === 'YCAII' || trimmedKey === 'CDY')) {
+            (trimmedKey.startsWith('DYS') || trimmedKey.startsWith('Y-') ||
+              trimmedKey === 'YCAII' || trimmedKey === 'CDY')) {
             const value = row[key]?.toString().trim();
             if (value && value !== '' && value !== '0' && value !== '-') {
               markers[trimmedKey] = value;
@@ -434,7 +503,7 @@ const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = '', 
         if (Object.keys(markers).length > 0) {
           samples.push({
             kitNumber: kitNumber.toString().trim(),
-            name: fullName,
+            name,
             country,
             haplogroup,
             markers
@@ -635,9 +704,22 @@ const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = '', 
                 </p>
               </div>
 
-              <Button onClick={saveSample} disabled={loading} className="w-full">
-                {loading ? 'Saving...' : mode === 'add' ? 'Add Sample' : 'Update Sample'}
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={saveSample} disabled={loading} className="flex-1">
+                  {loading ? 'Saving...' : mode === 'add' ? 'Add Sample' : 'Update Sample'}
+                </Button>
+
+                {mode === 'edit' && sample.kitNumber && (
+                  <Button
+                    onClick={deleteSample}
+                    disabled={loading}
+                    variant="default"
+                    className="flex-none bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    Delete
+                  </Button>
+                )}
+              </div>
             </>
           )}
 
@@ -698,7 +780,7 @@ const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = '', 
                 />
               </div>
 
-              <div className="flex gap-2 items-center">
+              <div className="flex gap-2 items-center flex-wrap">
                 <Button onClick={parseClipboardData} variant="outline">
                   Parse Pasted Data
                 </Button>
@@ -707,6 +789,15 @@ const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = '', 
                     {loading ? 'Uploading...' : `Upload ${parsedSamples.length} Samples`}
                   </Button>
                 )}
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={replaceExisting}
+                    onChange={(e) => setReplaceExisting(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  Перезаписать существующие
+                </label>
                 {uploadProgress && (
                   <span className="text-sm text-blue-600 ml-2">
                     Batch {uploadProgress.current}/{uploadProgress.total} | {uploadProgress.inserted} inserted
