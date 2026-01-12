@@ -287,10 +287,13 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
       }
     });
 
-    if (count >= 100) return <span className="ml-2 px-1.5 py-0.5 text-[10px] font-bold text-white bg-purple-600 rounded shadow-sm">Y111</span>;
-    if (count >= 60) return <span className="ml-2 px-1.5 py-0.5 text-[10px] font-bold text-white bg-indigo-500 rounded shadow-sm">Y67</span>;
-    if (count >= 30) return <span className="ml-2 px-1.5 py-0.5 text-[10px] font-bold text-white bg-blue-500 rounded shadow-sm">Y37</span>;
-    if (count >= 10) return <span className="ml-2 px-1.5 py-0.5 text-[10px] font-bold text-gray-600 bg-gray-200 rounded shadow-sm">Y12</span>;
+    // Compact Badge Styles (Left of ID)
+    const baseStyle = "ml-0.5 mr-1 px-1 py-px text-[9px] leading-none font-bold text-white rounded shadow-sm opacity-90";
+
+    if (count >= 100) return <span className={`${baseStyle} bg-purple-600`} title="Y111 Panel">Y111</span>;
+    if (count >= 60) return <span className={`${baseStyle} bg-indigo-500`} title="Y67 Panel">Y67</span>;
+    if (count >= 30) return <span className={`${baseStyle} bg-blue-500`} title="Y37 Panel">Y37</span>;
+    if (count >= 10) return <span className={`${baseStyle} bg-gray-400`} title="Y12 Panel">Y12</span>;
 
     return null;
   }, []);
@@ -431,9 +434,11 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
                           <Copy className="h-3.5 w-3.5" />
                         )}
                       </button>
-                      <div className="flex flex-col items-center">
-                        <span className="font-bold text-blue-800">{query.kitNumber || 'Query'}</span>
+
+                      {/* Badge & Kit Number Row */}
+                      <div className="flex items-center justify-center flex-wrap gap-0.5">
                         {getPanelBadge(query.markers)}
+                        <span className="font-bold text-blue-800 text-sm">{query.kitNumber || 'Query'}</span>
                       </div>
                     </div>
                   </td>
@@ -512,34 +517,36 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
                           <Copy className="h-3.5 w-3.5" />
                         )}
                       </button>
-                      <div className="flex items-center gap-1">
-                        {onKitNumberClick ? (
-                          <button
-                            onClick={() => match.profile?.kitNumber && onKitNumberClick(match.profile.kitNumber)}
-                            className="font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
-                            title="Click to search matches for this profile"
-                          >
-                            {match.profile?.kitNumber || 'N/A'}
-                          </button>
-                        ) : (
-                          <span className="font-bold text-blue-600">
-                            {match.profile?.kitNumber || 'N/A'}
-                          </span>
-                        )}
-                        {onEditProfile && (
-                          <button
-                            onClick={() => match.profile?.kitNumber && onEditProfile(match.profile.kitNumber)}
-                            className="text-gray-500 hover:text-blue-600 transition-colors"
-                            title="Edit profile"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                        )}
+                      {/* Badge & Kit Number Row */}
+                      <div className="flex items-center justify-center flex-wrap gap-0.5">
+                        {match.profile && getPanelBadge(match.profile.markers)}
+                        <div className="flex items-center">
+                          {onKitNumberClick ? (
+                            <button
+                              onClick={() => match.profile?.kitNumber && onKitNumberClick(match.profile.kitNumber)}
+                              className="font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors text-sm"
+                              title="Click to search matches for this profile"
+                            >
+                              {match.profile?.kitNumber || 'N/A'}
+                            </button>
+                          ) : (
+                            <span className="font-bold text-blue-600 text-sm">
+                              {match.profile?.kitNumber || 'N/A'}
+                            </span>
+                          )}
+                          {onEditProfile && (
+                            <button
+                              onClick={() => match.profile?.kitNumber && onEditProfile(match.profile.kitNumber)}
+                              className="text-gray-400 hover:text-blue-600 transition-colors ml-0.5"
+                              title="Edit profile"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      {/* Render Badge here */}
-                      {match.profile && getPanelBadge(match.profile.markers)}
                     </div>
                   </td>
 
