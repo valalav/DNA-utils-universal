@@ -64,7 +64,28 @@ Background colors indicate how rare a specific marker allele value is within the
 | ≤ 25% | **Uncommon** | 🟨 Yellow (Light) |
 | ≤ 15% | **Rare** | 🟧 Orange (Light) |
 | ≤ 8% | **Very Rare** | 🟧 Orange (Dark) |
-| ≤ 4% | **Extremely Rare**| 🟥 Red |
+66: | ≤ 8% | **Very Rare** | 🟧 Orange (Dark) |
+67: | ≤ 4% | **Extremely Rare**| 🟥 Red |
+68:
+69: ---
+70:
+71: ## 🏷️ FTDNA Panel Calculation (Badges)
+72: The system displays badges (`[Y37]`, `[Y67]`, `[Y111]`) next to Kit Numbers based on the *effective* marker count, closely mirroring FTDNA's nomenclature.
+73: 
+74: **Logic (`getPanelBadge`):**
+75: 1.  Iterate through all non-empty markers in the profile.
+76: 2.  **Base Count**: Each marker counts as +1.
+77: 3.  **Palindrome Weighting**: Multi-copy markers add extra weight to match FTDNA counting rules:
+78:     *   `DYS464`: Counts as **4** (Base + 3 extra).
+79:     *   `DYS385`, `YCAII`, `CDY`, `DYF395S1`, `DYS413`, `DYF387S1`, `DYF404S1`: Count as **2** (Base + 1 extra).
+80:     *   `DYS459`, `DYS459`: Count as **2**.
+81: 
+82: **Thresholds:**
+83: *   **Y111**: Count ≥ 100
+84: *   **Y67**: Count ≥ 60
+85: *   **Y37**: Count ≥ 30
+86: *   **Y12**: Count ≥ 10
+
 
 *Source: `MatchesTable.tsx` (useMemo `markerRarityCache`)*
 
